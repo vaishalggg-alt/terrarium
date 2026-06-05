@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(python3 -m http.server 4178 --bind 127.0.0.1)",
+      "Bash(curl -s -o /dev/null -w \"index:%{http_code}\\\\n\" http://127.0.0.1:4178/)",
+      "Bash(curl -s -o /dev/null -w \"app.js:%{http_code}\\\\n\" http://127.0.0.1:4178/src/app.js)",
+      "Bash(curl -s -o /dev/null -w \"world.js:%{http_code}\\\\n\" http://127.0.0.1:4178/src/world.js)",
+      "Bash(curl -s -o /dev/null -w \"store.js:%{http_code}\\\\n\" http://127.0.0.1:4178/src/store.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:4178/)",
+      "Bash(open *)",
+      "Bash(curl -s -o /dev/null -w \"react %{http_code}\\\\n\" https://esm.sh/react@18.2.0)",
+      "Bash(curl -s -o /dev/null -w \"htm %{http_code}\\\\n\" \"https://esm.sh/htm@3.1.1/react?deps=react@18.2.0\")",
+      "Bash(node --check --input-type=module)",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git -c user.email=sagopal@gmail.com -c user.name=tgv commit -q -m 'Terrarium mood world: Forest, Ocean, Desert biomes + day/night toggle *)"
+    ]
+  }
+}

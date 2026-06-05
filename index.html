@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Terrarium — Mood World</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0",
+      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+      "htm": "https://esm.sh/htm@3.1.1"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    // surface any load/runtime error on-screen (terminal can't see the console)
+    function showErr(msg) {
+      var r = document.getElementById('root');
+      r.innerHTML = '<pre style="color:#ff8a8a;background:#10131a;padding:20px;'
+        + 'font:13px/1.5 monospace;white-space:pre-wrap;height:100%;margin:0;overflow:auto">'
+        + 'ERROR\n\n' + String(msg) + '</pre>';
+    }
+    window.addEventListener('error', function (e) {
+      showErr((e.message || e.error) + '\n' + (e.filename || '') + ':' + (e.lineno || ''));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      showErr('Promise rejected: ' + (e.reason && e.reason.stack || e.reason));
+    });
+  </script>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
