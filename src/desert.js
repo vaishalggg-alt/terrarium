@@ -252,29 +252,61 @@ export function createDesert(canvas) {
     const { cx, r } = pool;
     // pads to the pool edge and pauses to drink
     const t = (Math.sin(foxState.phase) + 1) / 2;
-    const x = cx + r + 50 - t * 44;
+    const x = cx + r + 80 - t * 68;
     const y = groundY + 6;
     const drink = t > 0.85;
     ctx.save();
     ctx.translate(x, y);
-    const col = rgb([216, 168, 110].map((c) => c * d));
+    ctx.scale(1.8, 1.8); // bigger fox
+
+    // vivid reddish-orange fennec, distinct from sand
+    const furCol = rgb([210, 100, 40].map((c) => c * d));
+    const bellyCol = `rgba(255,235,210,${d})`;
+    const darkCol = rgb([80, 40, 20].map((c) => c * d));
+
     // body
-    ctx.fillStyle = col;
-    ctx.beginPath(); ctx.ellipse(0, -7, 11, 6, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = furCol;
+    ctx.beginPath(); ctx.ellipse(0, -7, 13, 7, 0, 0, TAU); ctx.fill();
+    // belly highlight
+    ctx.fillStyle = bellyCol;
+    ctx.beginPath(); ctx.ellipse(-1, -5, 8, 4, 0, 0, TAU); ctx.fill();
+
     // head
-    const hx = -10, hy = drink ? -2 : -10;
-    ctx.beginPath(); ctx.arc(hx, hy, 5, 0, TAU); ctx.fill();
-    // big fennec ears
-    ctx.beginPath(); ctx.moveTo(hx - 3, hy - 4); ctx.lineTo(hx - 6, hy - 13); ctx.lineTo(hx, hy - 6); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(hx + 1, hy - 4); ctx.lineTo(hx + 2, hy - 13); ctx.lineTo(hx + 5, hy - 5); ctx.closePath(); ctx.fill();
+    const hx = -12, hy = drink ? -4 : -13;
+    ctx.fillStyle = furCol;
+    ctx.beginPath(); ctx.arc(hx, hy, 6.5, 0, TAU); ctx.fill();
+    // face/muzzle lighter patch
+    ctx.fillStyle = bellyCol;
+    ctx.beginPath(); ctx.ellipse(hx - 2, hy + 1, 4, 3, -0.3, 0, TAU); ctx.fill();
+
+    // big fennec ears — large & outlined for contrast
+    ctx.fillStyle = furCol;
+    ctx.beginPath(); ctx.moveTo(hx - 4, hy - 5); ctx.lineTo(hx - 9, hy - 18); ctx.lineTo(hx + 1, hy - 7); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hx + 2, hy - 5); ctx.lineTo(hx + 4, hy - 18); ctx.lineTo(hx + 7, hy - 6); ctx.closePath(); ctx.fill();
+    // inner ear pink
+    ctx.fillStyle = `rgba(220,140,140,${d})`;
+    ctx.beginPath(); ctx.moveTo(hx - 4, hy - 7); ctx.lineTo(hx - 7, hy - 15); ctx.lineTo(hx, hy - 8); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hx + 2, hy - 7); ctx.lineTo(hx + 3, hy - 15); ctx.lineTo(hx + 6, hy - 7); ctx.closePath(); ctx.fill();
+
+    // nose
+    ctx.fillStyle = darkCol;
+    ctx.beginPath(); ctx.arc(hx - 5, hy + 2, 1.2, 0, TAU); ctx.fill();
+    // eye
+    ctx.fillStyle = darkCol;
+    ctx.beginPath(); ctx.arc(hx - 1, hy - 1, 1.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.beginPath(); ctx.arc(hx - 0.4, hy - 1.5, 0.5, 0, TAU); ctx.fill();
+
     // legs
-    ctx.strokeStyle = col; ctx.lineWidth = 2.4;
-    for (const lx of [-6, 6]) { ctx.beginPath(); ctx.moveTo(lx, -2); ctx.lineTo(lx, 4); ctx.stroke(); }
-    // bushy tail
-    ctx.fillStyle = col;
-    ctx.beginPath(); ctx.ellipse(11, -8, 7, 4, -0.4, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath(); ctx.arc(16, -10, 2.5, 0, TAU); ctx.fill();
+    ctx.strokeStyle = furCol; ctx.lineWidth = 2.8; ctx.lineCap = 'round';
+    for (const lx of [-7, -2, 4, 9]) { ctx.beginPath(); ctx.moveTo(lx, -2); ctx.lineTo(lx + 1, 6); ctx.stroke(); }
+
+    // bushy tail — white-tipped
+    ctx.fillStyle = furCol;
+    ctx.beginPath(); ctx.ellipse(13, -9, 9, 5, -0.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.arc(19, -12, 3.5, 0, TAU); ctx.fill();
+
     ctx.restore();
   }
 
