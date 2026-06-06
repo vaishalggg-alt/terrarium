@@ -13,6 +13,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const blend = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 const rgb = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+const ease = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
 function rng(seed) {
   let s = seed * 9301 + 49297;
@@ -45,11 +46,11 @@ export function createDesert(canvas) {
   let raf = 0;
   let t0 = performance.now();
 
-  const foxS    = { phase: 0 };
-  const snakeS  = { phase: 0 };
-  const coyoteS = { phase: 0 };
-  const owlS    = { phase: 0 };
-  const camelS  = { phase: 0 };
+  const foxS    = { phase: Math.random() * TAU };
+  const snakeS  = { phase: Math.random() * TAU };
+  const coyoteS = { phase: Math.random() * TAU };
+  const owlS    = { phase: Math.random() * TAU };
+  const camelS  = { phase: Math.random() * TAU };
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -140,7 +141,7 @@ export function createDesert(canvas) {
         ctx.lineTo(cx + (rr() - 0.5) * r, cy + (rr() - 0.5) * ry);
         ctx.stroke();
       }
-      return { cx, cy, r };
+      return { cx, cy, r, ry };
     }
 
     const wg = ctx.createLinearGradient(0, cy - ry, 0, cy + ry);
@@ -162,7 +163,7 @@ export function createDesert(canvas) {
       ctx.stroke();
     }
     ctx.restore();
-    return { cx, cy, r };
+    return { cx, cy, r, ry };
   }
 
   // ── vegetation ───────────────────────────────────────────────────────────
@@ -226,407 +227,580 @@ export function createDesert(canvas) {
   }
 
   // ── animals ──────────────────────────────────────────────────────────────
+  // All animals are drawn facing the pool and positioned at its edge.
+  // Relative sizes (realistic): camel >> coyote > fox ≈ owl > snake coil
 
-  // 2L — Fennec fox: pads to the pool edge to drink
+  // 2L — Fennec fox: pale sandy fur, enormous ears, trots to pool right edge
   function drawFox(pool, groundY, sky, time) {
-    foxS.phase += 0.003;
+    foxS.phase += 0.0016;
     const d = 0.4 + sky.day * 0.6;
-    const { cx, r } = pool;
-    const t = (Math.sin(foxS.phase) + 1) / 2;
-    const bx = cx + r + 95 - t * 78;
-    const by = groundY + 4;
-    const drink = t > 0.85;
+    const { cx, cy, r, ry } = pool;
 
-    ctx.save();
-    ctx.translate(bx, by);
-    ctx.scale(2.2, 2.2);
-
-    const fur   = rgb([208, 98, 38].map((c) => c * d));
-    const belly = `rgba(248,232,208,${d})`;
-    const dark  = rgb([62, 30, 12].map((c) => c * d));
-
-    // bushy tail
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(9, -3); ctx.bezierCurveTo(17, -10, 26, -8, 24, -1);
-    ctx.bezierCurveTo(22, 4, 14, 4, 10, 0); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${0.92 * d})`;
-    ctx.beginPath(); ctx.ellipse(23, -3, 4.5, 3, 0.4, 0, TAU); ctx.fill();
-
-    // body + belly
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(0, -5, 12, 6.5, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(-1, -3.5, 7.5, 4, 0, 0, TAU); ctx.fill();
-
-    // four legs
-    ctx.strokeStyle = fur; ctx.lineWidth = 2.8; ctx.lineCap = 'round';
-    [[-7, 0, -8, 8], [-2, 0, -3, 8], [3, -1, 3, 7], [8, -1, 8, 7]].forEach(([x1, y1, x2, y2]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    });
-
-    // head
-    const hx = -12, hy = drink ? -4 : -13;
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.arc(hx, hy, 6.5, 0, TAU); ctx.fill();
-    ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(hx - 2.5, hy + 1.5, 4.5, 3, -0.2, 0, TAU); ctx.fill();
-
-    // large ears with pink inner
-    ctx.fillStyle = fur;
-    [[hx - 4, hy - 5, hx - 10, hy - 20, hx, hy - 7],
-     [hx + 1, hy - 5, hx + 5, hy - 19, hx + 7, hy - 6]].forEach(([x1, y1, x2, y2, x3, y3]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill();
-    });
-    ctx.fillStyle = `rgba(215,135,135,${d})`;
-    [[hx - 4, hy - 7, hx - 8, hy - 16, hx - 1, hy - 8],
-     [hx + 1, hy - 7, hx + 3, hy - 15, hx + 6, hy - 7]].forEach(([x1, y1, x2, y2, x3, y3]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill();
-    });
-
-    // nose, eye, shine
-    ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.arc(hx - 6, hy + 2, 1.4, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(hx - 1, hy - 1, 1.5, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.beginPath(); ctx.arc(hx - 0.3, hy - 1.6, 0.55, 0, TAU); ctx.fill();
-
-    ctx.restore();
-  }
-
-  // 3L — Rattlesnake: coiled at the left pool edge, tongue flicking
-  function drawSnake(pool, groundY, sky, time) {
-    const d = 0.4 + sky.day * 0.6;
-    const { cx, r } = pool;
-    const bx = cx - r - 90;
+    // Oscillate: idle far → walk to pool → drink → walk back
+    const cycle = (Math.sin(foxS.phase) * 0.5 + 0.5); // 0..1
+    const drinkT = clamp((cycle - 0.6) / 0.35, 0, 1); // 0 until near, then 0→1
+    const bx = cx + r + 14 + (1 - ease(cycle)) * 72;
     const by = groundY + 2;
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.1, 2.1);
+    ctx.scale(-1.95, 1.95); // face left (toward pool)
 
-    const tan   = rgb([172, 138, 80].map((c) => c * d));
-    const brown = rgb([88, 62, 30].map((c) => c * d));
-    const head  = rgb([155, 115, 60].map((c) => c * d));
+    const fur    = rgb([216, 186, 118].map((c) => c * d)); // pale sandy buff
+    const shadow = rgb([170, 136, 75].map((c) => c * d));  // darker for shadow/markings
+    const belly  = `rgba(245,232,200,${d})`;
+    const dark   = rgb([38, 24, 8].map((c) => c * d));
 
-    // coil drawn back-to-front
-    // bottom arc of outer coil (behind inner)
-    ctx.strokeStyle = brown; ctx.lineWidth = 10; ctx.lineCap = 'butt';
-    ctx.beginPath(); ctx.arc(0, 2, 14, Math.PI * 0.08, Math.PI * 1.1); ctx.stroke();
-    ctx.strokeStyle = tan; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.arc(0, 2, 14, Math.PI * 0.1, Math.PI * 1.08); ctx.stroke();
+    // Bushy tail — held up and curled, white tip
+    ctx.fillStyle = fur;
+    ctx.beginPath();
+    ctx.moveTo(9, -2);
+    ctx.bezierCurveTo(20, -16, 32, -14, 30, -4);
+    ctx.bezierCurveTo(28, 3, 18, 4, 10, 0);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${0.88 * d})`;
+    ctx.beginPath(); ctx.ellipse(29, -6, 5, 3.5, -0.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(29, -7, 3, 2, -0.4, 0, TAU); ctx.fill();
 
-    // inner coil
-    ctx.strokeStyle = brown; ctx.lineWidth = 9; ctx.lineCap = 'butt';
-    ctx.beginPath(); ctx.arc(0, 2, 8, Math.PI * 0.65, Math.PI * 2.35); ctx.stroke();
-    ctx.strokeStyle = tan; ctx.lineWidth = 7.5;
-    ctx.beginPath(); ctx.arc(0, 2, 8, Math.PI * 0.67, Math.PI * 2.33); ctx.stroke();
+    // Body — elongated oval
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.ellipse(0, -7, 13, 6.5, -0.05, 0, TAU); ctx.fill();
+    ctx.fillStyle = belly;
+    ctx.beginPath(); ctx.ellipse(-1, -4.5, 8.5, 4, 0, 0, TAU); ctx.fill();
 
-    // top arc of outer coil (in front of inner)
-    ctx.strokeStyle = brown; ctx.lineWidth = 10; ctx.lineCap = 'butt';
-    ctx.beginPath(); ctx.arc(0, 2, 14, Math.PI * 1.1, Math.PI * 1.98); ctx.stroke();
-    ctx.strokeStyle = tan; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.arc(0, 2, 14, Math.PI * 1.12, Math.PI * 1.96); ctx.stroke();
+    // Legs — slight crouch when drinking
+    const crouch = drinkT * 2.5;
+    ctx.strokeStyle = fur; ctx.lineWidth = 2.8; ctx.lineCap = 'round';
+    [[-7.5, -1, -7.5, 7 - crouch], [-2.5, -1, -2.5, 7 - crouch],
+     [3.5, -2, 3.5, 6.5], [8, -2, 8, 6.5]].forEach(([x1, y1, x2, y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    });
+    // Paws
+    ctx.fillStyle = shadow;
+    [[-7.5, 7 - crouch], [-2.5, 7 - crouch], [3.5, 6.5], [8, 6.5]].forEach(([px, py]) => {
+      ctx.beginPath(); ctx.ellipse(px, py, 2.8, 1.6, 0, 0, TAU); ctx.fill();
+    });
 
-    // diamond pattern along visible coil
-    ctx.fillStyle = brown;
-    for (let i = 0; i < 6; i++) {
-      const angle = Math.PI * (0.1 + i * 0.31);
-      const px = Math.cos(angle) * 14, py = 2 + Math.sin(angle) * 14;
-      ctx.save(); ctx.translate(px, py); ctx.rotate(angle + Math.PI / 2);
-      ctx.beginPath(); ctx.moveTo(0, -3.5); ctx.lineTo(2.5, 0); ctx.lineTo(0, 3.5); ctx.lineTo(-2.5, 0); ctx.closePath(); ctx.fill();
+    // Head — dips forward and down when drinking
+    const headX = -14 - drinkT * 4;
+    const headY = -13 + drinkT * 8; // drops toward water
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.arc(headX, headY, 7, 0, TAU); ctx.fill();
+    // Muzzle
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.ellipse(headX - 5, headY + 1, 5, 3.2, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = belly;
+    ctx.beginPath(); ctx.ellipse(headX - 4.5, headY + 2.5, 3.5, 2, 0, 0, TAU); ctx.fill();
+
+    // Fennec's enormous ears (defining feature — nearly as tall as body)
+    const earLean = drinkT * 0.15; // ears tilt forward slightly when drinking
+    ctx.fillStyle = fur;
+    // Left ear
+    ctx.save(); ctx.translate(headX - 3, headY - 5); ctx.rotate(-earLean);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-8, -28); ctx.lineTo(5, -1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(210,140,140,${0.85 * d})`;
+    ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(-6, -24); ctx.lineTo(3.5, -2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // Right ear
+    ctx.fillStyle = fur;
+    ctx.save(); ctx.translate(headX + 3, headY - 5); ctx.rotate(earLean);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(6, -27); ctx.lineTo(8, -2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(210,140,140,${0.85 * d})`;
+    ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(5, -23); ctx.lineTo(6.5, -2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // Nose (dark, oval)
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(headX - 9, headY + 1.5, 1.7, 1.3, 0.1, 0, TAU); ctx.fill();
+    // Whisker dots
+    ctx.fillStyle = `rgba(0,0,0,${0.5 * d})`;
+    [[-5.5, 1.2], [-6, 0], [-6, 2.4]].forEach(([ox, oy]) => {
+      ctx.beginPath(); ctx.arc(headX + ox, headY + oy, 0.5, 0, TAU); ctx.fill();
+    });
+    // Eye (large, dark brown)
+    ctx.fillStyle = rgb([42, 28, 10].map((c) => c * d));
+    ctx.beginPath(); ctx.ellipse(headX - 1, headY - 1.5, 2.4, 2.1, 0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(headX + 0.3, headY - 2.5, 0.75, 0, TAU); ctx.fill();
+
+    ctx.restore();
+  }
+
+  // 3L — Rattlesnake: coiled at left pool edge, head raised and extended toward water
+  function drawSnake(pool, groundY, sky, time) {
+    snakeS.phase += 0.001;
+    const d = 0.4 + sky.day * 0.6;
+    const { cx, cy, r, ry } = pool;
+
+    // Positioned at left pool edge
+    const bx = cx - r - 18;
+    const by = groundY + 6;
+
+    // Gentle head sway
+    const headSway = Math.sin(snakeS.phase * 0.8) * 0.12;
+
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.scale(2.4, 2.4);
+
+    const bodyTan  = rgb([188, 155, 90].map((c) => c * d));  // tan base
+    const bodyDark = rgb([95, 68, 30].map((c) => c * d));    // dark saddles
+    const belly    = rgb([222, 200, 148].map((c) => c * d)); // pale belly
+    const headCol  = rgb([160, 125, 65].map((c) => c * d));
+
+    // ── coil (2 loops) ────────────────────────────────────────────
+    // Draw each arc segment with dark outline + lighter fill
+
+    const coilDraw = (strokeW, col, arcs) => {
+      ctx.strokeStyle = col; ctx.lineWidth = strokeW; ctx.lineCap = 'butt';
+      arcs.forEach(([rad, a0, a1]) => {
+        ctx.beginPath(); ctx.arc(0, 0, rad, a0, a1); ctx.stroke();
+      });
+    };
+
+    // Outer coil back-half (behind inner coil)
+    coilDraw(11, bodyDark, [[17, Math.PI * 0.05, Math.PI * 1.05]]);
+    coilDraw(8.5, bodyTan, [[17, Math.PI * 0.07, Math.PI * 1.03]]);
+    // belly stripe on outer
+    coilDraw(3.5, belly, [[17, Math.PI * 0.35, Math.PI * 0.82]]);
+
+    // Inner coil
+    coilDraw(10, bodyDark, [[9.5, Math.PI * 0.5, Math.PI * 2.4]]);
+    coilDraw(7.5, bodyTan, [[9.5, Math.PI * 0.52, Math.PI * 2.38]]);
+    coilDraw(3, belly, [[9.5, Math.PI * 0.55, Math.PI * 1.6]]);
+
+    // Outer coil front-half (in front of inner)
+    coilDraw(11, bodyDark, [[17, Math.PI * 1.05, Math.PI * 2.0]]);
+    coilDraw(8.5, bodyTan, [[17, Math.PI * 1.07, Math.PI * 1.98]]);
+    coilDraw(3.5, belly, [[17, Math.PI * 1.1, Math.PI * 1.7]]);
+
+    // Diamond saddle markings along outer coil
+    ctx.fillStyle = bodyDark;
+    for (let i = 0; i < 7; i++) {
+      const ang = Math.PI * (0.08 + i * 0.27);
+      const px = Math.cos(ang) * 17, py = Math.sin(ang) * 17;
+      ctx.save(); ctx.translate(px, py); ctx.rotate(ang + Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, -4.5); ctx.lineTo(3.5, 0); ctx.lineTo(0, 4.5); ctx.lineTo(-3.5, 0);
+      ctx.closePath(); ctx.fill();
       ctx.restore();
     }
 
-    // rattle segments at tail end
-    const rattleAng = Math.PI * 0.08;
-    const rx = Math.cos(rattleAng) * 14, ry2 = 2 + Math.sin(rattleAng) * 14;
-    const rattleCol = rgb([195, 162, 95].map((c) => c * d));
-    for (let s = 0; s < 4; s++) {
-      ctx.fillStyle = s % 2 ? tan : rattleCol;
-      ctx.beginPath(); ctx.ellipse(rx + s * 2.8, ry2 - s * 0.4, 4.5 - s * 0.5, 3.2 - s * 0.3, -0.25, 0, TAU); ctx.fill();
+    // Rattle (at tail end, right side)
+    const rattleBase = { x: Math.cos(Math.PI * 0.05) * 17, y: Math.sin(Math.PI * 0.05) * 17 };
+    const rattleCol = rgb([200, 168, 100].map((c) => c * d));
+    for (let s = 0; s < 5; s++) {
+      ctx.fillStyle = s % 2 ? bodyTan : rattleCol;
+      ctx.beginPath();
+      ctx.ellipse(rattleBase.x + s * 3.2, rattleBase.y - s * 0.3,
+        5.5 - s * 0.7, 3.8 - s * 0.5, -0.25, 0, TAU);
+      ctx.fill();
     }
 
-    // neck from inner coil to raised head
-    const neckAng = Math.PI * 2.33;
-    const nx = Math.cos(neckAng) * 8, ny = 2 + Math.sin(neckAng) * 8;
-    ctx.strokeStyle = brown; ctx.lineWidth = 9; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(nx, ny); ctx.quadraticCurveTo(nx + 3, ny - 10, 9, -15); ctx.stroke();
-    ctx.strokeStyle = tan; ctx.lineWidth = 7.5;
-    ctx.beginPath(); ctx.moveTo(nx, ny); ctx.quadraticCurveTo(nx + 3, ny - 10, 9, -15); ctx.stroke();
-
-    // broad triangular pit-viper head
-    const hx = 9, hy = -15;
-    ctx.fillStyle = brown;
+    // ── neck rising from inner coil, curving toward pool (right) ──────────
+    const neckBase = { x: Math.cos(Math.PI * 2.38) * 9.5, y: Math.sin(Math.PI * 2.38) * 9.5 };
+    // Neck curves rightward and upward toward the water
+    ctx.strokeStyle = bodyDark; ctx.lineWidth = 11; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(hx - 7, hy + 3); ctx.lineTo(hx + 7, hy + 3); ctx.lineTo(hx + 9, hy - 2);
-    ctx.lineTo(hx + 3, hy - 8); ctx.lineTo(hx - 3, hy - 8); ctx.lineTo(hx - 9, hy - 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = head;
+    ctx.moveTo(neckBase.x, neckBase.y);
+    ctx.quadraticCurveTo(neckBase.x + 10, neckBase.y - 8, 18 + headSway * 5, -20);
+    ctx.stroke();
+    ctx.strokeStyle = bodyTan; ctx.lineWidth = 8.5;
     ctx.beginPath();
-    ctx.moveTo(hx - 5, hy + 1); ctx.lineTo(hx + 5, hy + 1); ctx.lineTo(hx + 7, hy - 2);
-    ctx.lineTo(hx + 2, hy - 7); ctx.lineTo(hx - 2, hy - 7); ctx.lineTo(hx - 7, hy - 2); ctx.closePath(); ctx.fill();
+    ctx.moveTo(neckBase.x, neckBase.y);
+    ctx.quadraticCurveTo(neckBase.x + 10, neckBase.y - 8, 18 + headSway * 5, -20);
+    ctx.stroke();
+    // Belly along neck
+    ctx.strokeStyle = belly; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(neckBase.x, neckBase.y);
+    ctx.quadraticCurveTo(neckBase.x + 10, neckBase.y - 8, 18 + headSway * 5, -20);
+    ctx.stroke();
 
-    // vertical slit pupil (rattlesnake characteristic)
-    ctx.fillStyle = `rgba(${(255 * d) | 0},${(140 * d) | 0},0,${d})`;
-    ctx.beginPath(); ctx.ellipse(hx + 3.5, hy - 3.5, 2.2, 1.8, 0.2, 0, TAU); ctx.fill();
+    // ── broad triangular pit-viper head ──────────────────────────────────
+    const hx = 18 + headSway * 5, hy = -20;
+    // Head rotated to face right (toward pool)
+    ctx.save();
+    ctx.translate(hx, hy);
+    ctx.rotate(headSway);
+
+    // Jaw / head shape — wide triangular pit viper silhouette
+    ctx.fillStyle = bodyDark;
+    ctx.beginPath();
+    ctx.moveTo(-9, 4); ctx.lineTo(9, 4); ctx.lineTo(12, -1);
+    ctx.lineTo(5, -9); ctx.lineTo(-5, -9); ctx.lineTo(-11, -1);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = headCol;
+    ctx.beginPath();
+    ctx.moveTo(-7, 2.5); ctx.lineTo(7, 2.5); ctx.lineTo(10, -1);
+    ctx.lineTo(4, -7.5); ctx.lineTo(-4, -7.5); ctx.lineTo(-9, -1);
+    ctx.closePath(); ctx.fill();
+
+    // Heat-sensing pit (characteristic of rattlesnakes)
+    ctx.fillStyle = bodyDark;
+    ctx.beginPath(); ctx.ellipse(-5, -0.5, 1.8, 1.4, 0.3, 0, TAU); ctx.fill();
+
+    // Vertical slit pupil in amber eye
+    ctx.fillStyle = `rgba(${(240 * d) | 0},${(155 * d) | 0},0,${d})`;
+    ctx.beginPath(); ctx.ellipse(4, -3, 2.8, 2.4, 0.15, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.95)';
-    ctx.beginPath(); ctx.ellipse(hx + 3.5, hy - 3.5, 0.7, 1.8, 0.2, 0, TAU); ctx.fill();
-    // heat pit
-    ctx.fillStyle = brown;
-    ctx.beginPath(); ctx.arc(hx - 3, hy - 1, 1.2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(4, -3, 0.9, 2.4, 0.15, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(5, -4, 0.7, 0, TAU); ctx.fill();
 
-    // tongue flick
-    const flickAmt = Math.sin(time * 0.007);
-    if (flickAmt > 0.55) {
-      const ta = (flickAmt - 0.55) / 0.45;
-      ctx.strokeStyle = `rgba(${(200 * d) | 0},${(20 * d) | 0},${(20 * d) | 0},${ta * d})`;
-      ctx.lineWidth = 0.9; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(hx, hy - 8); ctx.lineTo(hx, hy - 14); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(hx, hy - 14); ctx.lineTo(hx - 3.5, hy - 18); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(hx, hy - 14); ctx.lineTo(hx + 3.5, hy - 18); ctx.stroke();
+    // Nostril
+    ctx.fillStyle = bodyDark;
+    ctx.beginPath(); ctx.ellipse(9, 1, 1, 0.7, 0.2, 0, TAU); ctx.fill();
+
+    // Tongue flick toward water
+    const flick = Math.sin(time * 0.008);
+    if (flick > 0.4) {
+      const ta = (flick - 0.4) / 0.6;
+      ctx.strokeStyle = `rgba(${(195 * d) | 0},${(15 * d) | 0},${(15 * d) | 0},${ta})`;
+      ctx.lineWidth = 1.1; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(10, 2); ctx.lineTo(18, 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(18, 2); ctx.lineTo(22, -1.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(18, 2); ctx.lineTo(22, 5.5); ctx.stroke();
     }
 
-    ctx.restore();
+    ctx.restore(); // end head rotation
+    ctx.restore(); // end animal
   }
 
-  // 4L — Coyote: standing at the far right, watching the oasis
-  function drawCoyote(groundY, sky, time) {
-    coyoteS.phase += 0.0025;
+  // 4L — Coyote: leans over pool right edge, head bowed to drink
+  function drawCoyote(pool, groundY, sky, time) {
+    coyoteS.phase += 0.0018;
     const d = 0.4 + sky.day * 0.6;
-    const bx = W * 0.84;
-    const by = groundY + 4;
-    const bob = Math.sin(coyoteS.phase) * 1.2;
+    const { cx, r } = pool;
+
+    const cycle = (Math.sin(coyoteS.phase) * 0.5 + 0.5);
+    const drinkT = clamp((cycle - 0.45) / 0.45, 0, 1);
+    const bx = cx + r + 26 + (1 - ease(cycle)) * 90;
+    const by = groundY + 2;
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.5, 2.5);
+    ctx.scale(-2.65, 2.65); // face left
 
-    const fur   = rgb([178, 152, 105].map((c) => c * d));
-    const dark  = rgb([88, 68, 35].map((c) => c * d));
-    const belly = rgb([222, 208, 178].map((c) => c * d));
+    const fur    = rgb([170, 148, 105].map((c) => c * d)); // gray-brown
+    const dark   = rgb([82, 62, 32].map((c) => c * d));
+    const belly  = rgb([218, 205, 172].map((c) => c * d));
+    const muzzle = rgb([195, 176, 132].map((c) => c * d));
 
-    // drooping bushy tail
+    // Bushy tail drooping down, dark tip
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(11, -4); ctx.bezierCurveTo(22, 0, 22, 10, 16, 14);
-    ctx.bezierCurveTo(14, 16, 10, 14, 11, 10); ctx.bezierCurveTo(14, 6, 14, 2, 10, 0); ctx.fill();
+    ctx.moveTo(12, -5);
+    ctx.bezierCurveTo(24, 2, 26, 14, 20, 18);
+    ctx.bezierCurveTo(16, 20, 12, 16, 13, 10);
+    ctx.bezierCurveTo(15, 4, 15, -1, 11, -3);
+    ctx.fill();
     ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.ellipse(15, 14, 3.5, 2, 0.4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(18.5, 18, 4, 2.5, 0.4, 0, TAU); ctx.fill();
 
-    // body + belly
+    // Body
     ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(0, -8, 13, 7, -0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -9, 14, 7.5, -0.05, 0, TAU); ctx.fill();
     ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(-1, -5, 8.5, 4.5, -0.08, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-1, -6, 9, 5, -0.05, 0, TAU); ctx.fill();
 
-    // four legs
-    ctx.strokeStyle = fur; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
-    [[-9, -3, -10, 8], [-12, -3, -13, 8], [7, -2, 7, 8], [10, -2, 10, 8]].forEach(([x1, y1, x2, y2]) => {
+    // Legs — front pair lean forward when drinking
+    const frontLean = drinkT * 4;
+    ctx.strokeStyle = fur; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+    [[-9, -3, -10 - frontLean, 9], [-13, -3, -14 - frontLean, 9],
+     [7, -4, 7, 9], [11, -4, 11, 9]].forEach(([x1, y1, x2, y2]) => {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     });
-    ctx.fillStyle = fur;
-    [[-10, 8], [-13, 8], [7, 8], [10, 8]].forEach(([px, py]) => {
-      ctx.beginPath(); ctx.ellipse(px, py, 3, 1.8, 0, 0, TAU); ctx.fill();
+    // Paws
+    ctx.fillStyle = dark;
+    [[-10 - frontLean, 9], [-14 - frontLean, 9], [7, 9], [11, 9]].forEach(([px, py]) => {
+      ctx.beginPath(); ctx.ellipse(px, py, 3.5, 2.2, 0, 0, TAU); ctx.fill();
     });
 
-    // neck + head (with bob)
+    // Neck + head — dips deeply to drink
+    const headDip = drinkT * 18;
+    const headFwd = drinkT * 10;
+    const hx = -22 - headFwd, hy = -24 + headDip;
+
+    // Neck
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(-12, -13 + bob); ctx.quadraticCurveTo(-16, -18 + bob, -20, -24 + bob);
-    ctx.quadraticCurveTo(-16, -16 + bob, -11, -14 + bob); ctx.fill();
+    ctx.moveTo(-12, -15);
+    ctx.quadraticCurveTo(hx + 10, hy + 10, hx, hy + 8);
+    ctx.quadraticCurveTo(hx + 8, hy + 8, -10, -14);
+    ctx.fill();
 
-    const hx = -23, hy = -26 + bob;
+    // Head — elongated coyote skull
     ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(hx, hy, 8.5, 7.5, -0.18, 0, TAU); ctx.fill();
-    ctx.fillStyle = rgb([158, 128, 88].map((c) => c * d));
-    ctx.beginPath(); ctx.ellipse(hx - 8, hy + 1.5, 8, 3.8, -0.12, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx, hy, 10, 8.5, -0.12, 0, TAU); ctx.fill();
+    // Forehead saddle (darker)
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(hx + 2, hy - 4, 7, 3.5, -0.12, 0, TAU); ctx.fill();
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.ellipse(hx + 2, hy - 3.5, 5.5, 2.5, -0.12, 0, TAU); ctx.fill();
+    // Muzzle (long and pointed)
+    ctx.fillStyle = muzzle;
+    ctx.beginPath(); ctx.ellipse(hx - 9, hy + 1.5, 9.5, 4, -0.08, 0, TAU); ctx.fill();
     ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(hx - 6, hy + 3, 5, 2.5, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx - 9, hy + 3.5, 6, 2.5, 0, 0, TAU); ctx.fill();
 
-    // pointed ears
+    // Ears — tall and pointed
     ctx.fillStyle = fur;
-    [[hx - 2, hy - 6, hx - 6, hy - 18, hx + 2, hy - 7],
-     [hx + 3, hy - 6, hx + 6, hy - 17, hx + 8, hy - 6]].forEach(([x1, y1, x2, y2, x3, y3]) => {
+    [[hx - 1, hy - 7, hx - 6, hy - 24, hx + 4, hy - 8],
+     [hx + 5, hy - 7, hx + 10, hy - 22, hx + 11, hy - 7]].forEach(([x1, y1, x2, y2, x3, y3]) => {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill();
     });
-    ctx.fillStyle = `rgba(210,148,148,${d})`;
-    [[hx - 2, hy - 8, hx - 4, hy - 14, hx + 1, hy - 8],
-     [hx + 3, hy - 8, hx + 5, hy - 13, hx + 7, hy - 7]].forEach(([x1, y1, x2, y2, x3, y3]) => {
+    ctx.fillStyle = `rgba(200,142,142,${0.8 * d})`;
+    [[hx - 1, hy - 9, hx - 4, hy - 20, hx + 3, hy - 9],
+     [hx + 5, hy - 9, hx + 8, hy - 18, hx + 10, hy - 8]].forEach(([x1, y1, x2, y2, x3, y3]) => {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill();
     });
 
-    // amber eye with pupil + shine
-    ctx.fillStyle = `rgba(${(220 * d) | 0},${(165 * d) | 0},${(55 * d) | 0},${d})`;
-    ctx.beginPath(); ctx.arc(hx - 2, hy - 3, 2, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.9)';
-    ctx.beginPath(); ctx.arc(hx - 2, hy - 3, 1.2, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.beginPath(); ctx.arc(hx - 1.2, hy - 3.8, 0.55, 0, TAU); ctx.fill();
-    ctx.fillStyle = rgb([42, 28, 12].map((c) => c * d));
-    ctx.beginPath(); ctx.ellipse(hx - 15, hy + 1.5, 2.2, 1.6, 0, 0, TAU); ctx.fill();
+    // Amber eye with pupil
+    ctx.fillStyle = `rgba(${(215 * d) | 0},${(165 * d) | 0},${(50 * d) | 0},${d})`;
+    ctx.beginPath(); ctx.ellipse(hx - 1, hy - 2, 2.4, 2.1, 0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.92)';
+    ctx.beginPath(); ctx.arc(hx - 1, hy - 2, 1.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.beginPath(); ctx.arc(hx + 0.1, hy - 3, 0.6, 0, TAU); ctx.fill();
+
+    // Nose
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(hx - 17, hy + 1.5, 2, 1.5, 0.1, 0, TAU); ctx.fill();
 
     ctx.restore();
   }
 
-  // 5L — Burrowing owl: perched on a rock near the left edge
-  function drawOwl(groundY, sky, time) {
-    owlS.phase += 0.002;
+  // 5L — Burrowing owl: perched on a rock to the right of the pool, watches intently
+  function drawOwl(pool, groundY, sky, time) {
+    owlS.phase += 0.0014;
     const d = 0.4 + sky.day * 0.6;
-    const bx = W * 0.17;
-    const by = groundY - 72;
-    const swivel = Math.sin(owlS.phase * 0.6) * 0.18;
+    const { cx, r } = pool;
+
+    // Perched on a rock just right of pool
+    const bx = cx + r + 65;
+    const by = groundY - 10; // slightly elevated (on rock)
+    const swivel = Math.sin(owlS.phase * 0.55) * 0.28;
+    // Occasional head bob (dipping to drink)
+    const bobT = clamp((Math.sin(owlS.phase * 1.4) - 0.65) / 0.35, 0, 1);
+    const bob = bobT * 8;
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.1, 2.1);
+    ctx.scale(-1.95, 1.95); // face left
 
-    const body = rgb([158, 126, 76].map((c) => c * d));
-    const dark = rgb([78, 56, 28].map((c) => c * d));
-    const face = rgb([205, 178, 128].map((c) => c * d));
-    const rock = rgb([128, 106, 80].map((c) => c * d));
+    const body  = rgb([152, 118, 68].map((c) => c * d));  // warm brown
+    const dark  = rgb([72, 50, 22].map((c) => c * d));
+    const face  = rgb([202, 175, 125].map((c) => c * d)); // facial disc (pale)
+    const rock  = rgb([125, 100, 75].map((c) => c * d));
 
-    // rock perch
+    // Rock
     ctx.fillStyle = rock;
-    ctx.beginPath(); ctx.ellipse(0, 26, 16, 8, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = rgb([148, 124, 95].map((c) => c * d));
-    ctx.beginPath(); ctx.ellipse(-3, 22, 10, 5, -0.2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 28, 19, 9, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = rgb([148, 122, 95].map((c) => c * d));
+    ctx.beginPath(); ctx.ellipse(-4, 23, 12, 5.5, -0.18, 0, TAU); ctx.fill();
 
-    // body
+    // Body — stocky upright oval
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(0, 10, 9.5, 14, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 8, 10, 15, 0, 0, TAU); ctx.fill();
 
-    // wing streaks
-    ctx.strokeStyle = dark; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath(); ctx.moveTo(i * 3, 4); ctx.lineTo(i * 2.8, 20); ctx.stroke();
+    // Brown-and-white barred underparts
+    ctx.fillStyle = `rgba(235,220,185,${0.55 * d})`;
+    ctx.beginPath(); ctx.ellipse(0, 10, 6.5, 10, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-6, 4 + i * 3.5);
+      ctx.quadraticCurveTo(0, 3.5 + i * 3.5, 6, 4 + i * 3.5);
+      ctx.stroke();
     }
 
-    // white spots
-    ctx.fillStyle = `rgba(245,238,215,${0.55 * d})`;
-    [[6, 8], [-6, 10], [4, 15], [-5, 16], [7, 13]].forEach(([sx, sy]) => {
-      ctx.beginPath(); ctx.ellipse(sx, sy, 1.5, 1, 0.3, 0, TAU); ctx.fill();
+    // Wing feather detail
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    [[-8, 2, -7, 18], [-5, 0, -4.5, 17], [5, 0, 4.5, 17], [8, 2, 7, 18]].forEach(([x1, y1, x2, y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     });
 
-    // face disc + swivel
+    // Head (swivels)
+    ctx.save();
+    ctx.translate(0, -7 + bob * 0.3);
+    ctx.rotate(swivel);
+
+    // Facial disc — pale oval
     ctx.fillStyle = face;
-    ctx.save(); ctx.rotate(swivel);
-    ctx.beginPath(); ctx.ellipse(0, -2, 7.5, 9, 0, 0, TAU); ctx.fill();
-    // white brow
-    ctx.fillStyle = `rgba(245,238,210,${0.8 * d})`;
-    ctx.beginPath(); ctx.ellipse(0, -8, 5, 1.8, 0, 0, TAU); ctx.fill();
-    // ear tufts
+    ctx.beginPath(); ctx.ellipse(0, 0, 9, 10.5, 0, 0, TAU); ctx.fill();
+    // Dark border around facial disc
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(0, 0, 9, 10.5, 0, 0, TAU); ctx.stroke();
+    // White brow bar (very characteristic of burrowing owls)
+    ctx.fillStyle = `rgba(245,240,215,${0.9 * d})`;
+    ctx.beginPath(); ctx.ellipse(0, -7, 6.5, 2, 0, 0, TAU); ctx.fill();
+
+    // Ear tufts (small on burrowing owl)
     ctx.fillStyle = body;
-    [[-4, -9, -6, -17, -1, -10], [4, -9, 6, -17, 1, -10]].forEach(([x1, y1, x2, y2, x3, y3]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill();
+    [[-3.5, -9.5, -6, -16, -0.5, -10.5], [3.5, -9.5, 6, -16, 0.5, -10.5]].forEach(([x1,y1, x2,y2, x3,y3]) => {
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
     });
-    // large yellow eyes
-    ctx.fillStyle = `rgba(${(245 * d) | 0},${(185 * d) | 0},${(25 * d) | 0},${d})`;
-    ctx.beginPath(); ctx.arc(-3.5, -2, 4.5, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(3.5, -2, 4.5, 0, TAU); ctx.fill();
+
+    // Large yellow eyes with black pupils (signature feature)
+    ctx.fillStyle = `rgba(${(250 * d) | 0},${(195 * d) | 0},${(18 * d) | 0},${d})`;
+    ctx.beginPath(); ctx.arc(-3.2, -1.5, 4.8, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(3.2, -1.5, 4.8, 0, TAU); ctx.fill();
+    // Pupil
     ctx.fillStyle = 'rgba(0,0,0,0.95)';
-    ctx.beginPath(); ctx.arc(-3.5, -2, 3.2, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(3.5, -2, 3.2, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.beginPath(); ctx.arc(-2.2, -3.2, 1.2, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(4.8, -3.2, 1.2, 0, TAU); ctx.fill();
-    // hooked beak
-    ctx.fillStyle = rgb([162, 132, 68].map((c) => c * d));
-    ctx.beginPath(); ctx.moveTo(-2, 1); ctx.lineTo(2, 1); ctx.lineTo(0.5, 6); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(-3.2, -1.5, 3.5, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(3.2, -1.5, 3.5, 0, TAU); ctx.fill();
+    // Eye shine
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.arc(-1.8, -3, 1.4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(4.6, -3, 1.4, 0, TAU); ctx.fill();
+    // Tiny hooked beak
+    ctx.fillStyle = rgb([155, 128, 62].map((c) => c * d));
+    ctx.beginPath(); ctx.moveTo(-2.5, 2.5); ctx.lineTo(2.5, 2.5); ctx.lineTo(0.5, 7.5); ctx.closePath(); ctx.fill();
+
     ctx.restore(); // end swivel
 
-    // talons gripping rock
-    ctx.strokeStyle = rgb([135, 106, 58].map((c) => c * d));
-    ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    // Talons on rock
+    ctx.strokeStyle = rgb([130, 100, 52].map((c) => c * d));
+    ctx.lineWidth = 2.0; ctx.lineCap = 'round';
     [[-5, 22], [5, 22]].forEach(([fx, fy]) => {
-      [-1, 0, 1].forEach((t) => {
-        ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx + t * 5.5, fy + 6); ctx.stroke();
+      [-1.5, 0, 1.5, 3].forEach((t) => {
+        const angle = (t - 0.75) * 0.5;
+        ctx.beginPath(); ctx.moveTo(fx, fy);
+        ctx.lineTo(fx + Math.sin(angle) * 8, fy + Math.cos(angle) * 6); ctx.stroke();
       });
     });
 
     ctx.restore();
   }
 
-  // 6L — Dromedary camel: standing tall at the far left, slowly chewing
-  function drawCamel(groundY, sky, time) {
-    camelS.phase += 0.0015;
+  // 6L — Dromedary camel: largest animal, left of pool, long neck bowing to water
+  function drawCamel(pool, groundY, sky, time) {
+    camelS.phase += 0.001;
     const d = 0.4 + sky.day * 0.6;
-    const bx = W * 0.10;
+    const { cx, r } = pool;
+
+    // Left of pool — camel neck reaches rightward toward water
+    const bx = clamp(cx - r - 70, 20, W * 0.32);
     const by = groundY + 4;
-    const chew = Math.abs(Math.sin(camelS.phase * 2)) * 1.5;
+
+    // Slow jaw chew
+    const chew = Math.abs(Math.sin(camelS.phase * 1.8)) * 2.5;
+    // Occasional head dip to water
+    const dipT = clamp((Math.sin(camelS.phase * 0.7) - 0.3) / 0.5, 0, 1);
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.2, 2.2);
+    ctx.scale(3.8, 3.8); // Camel is by far the biggest
 
-    const fur   = rgb([198, 162, 98].map((c) => c * d));
-    const dark  = rgb([138, 106, 60].map((c) => c * d));
-    const belly = rgb([216, 186, 128].map((c) => c * d));
+    const fur    = rgb([198, 163, 98].map((c) => c * d));  // tawny camel
+    const dark   = rgb([138, 105, 55].map((c) => c * d));
+    const belly  = rgb([218, 188, 128].map((c) => c * d));
+    const hoove  = rgb([62, 45, 20].map((c) => c * d));
 
-    // four long legs with knee joints
+    // ── four long legs with knee joints ──────────────────────────
+    const legData = [
+      // front pair (right side of drawing = toward pool)
+      { x1: 10, y1: -4,  kx: 9,   ky: 12, x2: 9,   y2: 26 },
+      { x1: 14, y1: -4,  kx: 13,  ky: 12, x2: 13,  y2: 26 },
+      // back pair
+      { x1: -10, y1: -8, kx: -11, ky: 10, x2: -12, y2: 26 },
+      { x1: -15, y1: -8, kx: -16, ky: 10, x2: -17, y2: 26 },
+    ];
     ctx.strokeStyle = fur; ctx.lineWidth = 5.5; ctx.lineCap = 'round';
-    [[10, -2, 9, 12, 10, 24], [15, -2, 14, 12, 15, 24],
-     [-12, -6, -13, 10, -14, 24], [-16, -6, -17, 10, -18, 24]].forEach(([x1, y1, kx, ky, x2, y2]) => {
+    legData.forEach(({ x1, y1, kx, ky, x2, y2 }) => {
       ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(kx, ky); ctx.lineTo(x2, y2); ctx.stroke();
     });
+    // Knee bumps
     ctx.fillStyle = dark;
-    [[-13, 10], [-17, 10], [9, 12], [14, 12]].forEach(([kx, ky]) => {
-      ctx.beginPath(); ctx.arc(kx, ky, 3, 0, TAU); ctx.fill();
+    legData.forEach(({ kx, ky }) => {
+      ctx.beginPath(); ctx.arc(kx, ky, 3.2, 0, TAU); ctx.fill();
     });
-    // split hooves
-    ctx.fillStyle = dark;
-    [[-14, 24], [-18, 24], [9, 24], [15, 24]].forEach(([hfx, hfy]) => {
-      ctx.beginPath(); ctx.ellipse(hfx, hfy, 5, 3, 0, 0, TAU); ctx.fill();
-      ctx.strokeStyle = rgb([80, 58, 28].map((c) => c * d));
-      ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hfx, hfy - 2); ctx.lineTo(hfx, hfy + 4); ctx.stroke();
+    // Wide two-toed hooves
+    ctx.fillStyle = hoove;
+    legData.forEach(({ x2, y2 }) => {
+      ctx.beginPath(); ctx.ellipse(x2, y2, 5.5, 3, 0, 0, TAU); ctx.fill();
+      ctx.strokeStyle = rgb([40, 28, 12].map((c) => c * d));
+      ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.moveTo(x2, y2 - 2.5); ctx.lineTo(x2, y2 + 3); ctx.stroke();
       ctx.strokeStyle = fur; ctx.lineWidth = 5.5;
     });
 
-    // body + belly
+    // ── body ────────────────────────────────────────────────────
     ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(0, -9, 18, 9.5, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -11, 20, 11, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(0, -5, 13, 6, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -7, 14, 7, 0, 0, TAU); ctx.fill();
 
-    // hump
+    // ── single hump (dromedary) ─────────────────────────────────
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(-9, -17); ctx.quadraticCurveTo(-2, -34, 5, -32);
-    ctx.quadraticCurveTo(13, -30, 14, -17); ctx.closePath(); ctx.fill();
+    ctx.moveTo(-8, -21);
+    ctx.quadraticCurveTo(-1, -40, 7, -38);
+    ctx.quadraticCurveTo(15, -36, 16, -21);
+    ctx.closePath(); ctx.fill();
+    // Darker hump top
     ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.ellipse(4, -24, 7, 4.5, -0.25, 0, TAU); ctx.fill();
-
-    // long neck
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-16, -16); ctx.quadraticCurveTo(-24, -12, -28, -20);
-    ctx.quadraticCurveTo(-30, -28, -28, -38); ctx.quadraticCurveTo(-24, -28, -20, -20); ctx.closePath(); ctx.fill();
-
-    // head
-    const hx = -28, hy = -40;
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(hx, hy, 9, 7, -0.25, 0, TAU); ctx.fill();
-    // drooping upper lip
-    ctx.fillStyle = rgb([185, 148, 90].map((c) => c * d));
-    ctx.beginPath();
-    ctx.moveTo(hx - 4, hy + 3); ctx.quadraticCurveTo(hx - 12, hy + 5, hx - 14, hy + 8);
-    ctx.quadraticCurveTo(hx - 12, hy + 11, hx - 8, hy + 10);
-    ctx.quadraticCurveTo(hx - 5, hy + 9, hx - 3, hy + 7 - chew); ctx.fill();
-    // lower jaw (moves with chew)
-    ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(hx - 9, hy + 8 + chew * 0.5, 4, 2, 0.1, 0, TAU); ctx.fill();
-    // nostril slits
-    ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.ellipse(hx - 12, hy + 5, 1.6, 0.9, 0.3, 0, TAU); ctx.fill();
-
-    // eye with long lashes
-    ctx.fillStyle = rgb([55, 38, 15].map((c) => c * d));
-    ctx.beginPath(); ctx.ellipse(hx + 3, hy - 3, 3, 2.5, 0.2, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.beginPath(); ctx.arc(hx + 4.5, hy - 4, 0.9, 0, TAU); ctx.fill();
-    ctx.strokeStyle = dark; ctx.lineWidth = 0.9; ctx.lineCap = 'round';
-    for (let i = 0; i < 5; i++) {
-      ctx.beginPath(); ctx.moveTo(hx + 1 + i, hy - 5.5); ctx.lineTo(hx + 0.5 + i, hy - 9.5); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(5, -31, 8, 5, -0.2, 0, TAU); ctx.fill();
+    // Hump fur ridge
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath(); ctx.moveTo(4 + i * 1.5, -38); ctx.lineTo(4 + i * 1.5, -34); ctx.stroke();
     }
+
+    // ── long neck curving toward pool (right) ───────────────────
+    const neckDip = dipT * 10;
+    ctx.fillStyle = fur;
+    ctx.beginPath();
+    ctx.moveTo(16, -20);
+    ctx.quadraticCurveTo(26, -22 + neckDip, 30, -16 + neckDip);
+    ctx.quadraticCurveTo(34, -9 + neckDip, 30, -5 + neckDip);
+    ctx.quadraticCurveTo(26, -3 + neckDip, 22, -8 + neckDip);
+    ctx.quadraticCurveTo(22, -15 + neckDip * 0.5, 18, -18);
+    ctx.closePath(); ctx.fill();
+
+    // ── head ────────────────────────────────────────────────────
+    const hx = 30, hy = -18 + neckDip;
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.ellipse(hx, hy, 10.5, 7.5, -0.2, 0, TAU); ctx.fill();
+
+    // Distinctive drooping lip (camel's unique look)
+    ctx.fillStyle = rgb([182, 148, 90].map((c) => c * d));
+    ctx.beginPath();
+    ctx.moveTo(hx - 2, hy + 4);
+    ctx.quadraticCurveTo(hx + 12, hy + 5, hx + 14, hy + 9);
+    ctx.quadraticCurveTo(hx + 12, hy + 14, hx + 7, hy + 13);
+    ctx.quadraticCurveTo(hx + 3, hy + 12, hx + 1, hy + 8 - chew);
+    ctx.fill();
+    // Lower jaw with chew
+    ctx.fillStyle = belly;
+    ctx.beginPath(); ctx.ellipse(hx + 8, hy + 10 + chew * 0.5, 4.5, 2.5, 0.1, 0, TAU); ctx.fill();
+
+    // Slit-like nostrils (camels have closeable nostrils)
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(hx + 13, hy + 5, 1.8, 1, 0.35, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx + 13, hy + 8, 1.8, 1, 0.35, 0, TAU); ctx.fill();
+
+    // Eye — small but with very long lashes (camels famous for lashes)
+    ctx.fillStyle = rgb([40, 28, 10].map((c) => c * d));
+    ctx.beginPath(); ctx.ellipse(hx + 3, hy - 4, 3.5, 2.8, 0.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(hx + 4.5, hy - 5, 1, 0, TAU); ctx.fill();
+    // Eyelashes — long curved (camel's signature)
+    ctx.strokeStyle = dark; ctx.lineWidth = 1.0; ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const lx = hx + 1 + i * 0.9;
+      const curveX = -0.5 + i * 0.3;
+      ctx.beginPath();
+      ctx.moveTo(lx, hy - 6.5);
+      ctx.quadraticCurveTo(lx + curveX, hy - 10, lx + curveX * 1.5, hy - 13);
+      ctx.stroke();
+    }
+
+    // Small ear
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.ellipse(hx + 1, hy - 8, 3, 1.8, -0.6, 0, TAU); ctx.fill();
 
     ctx.restore();
   }
@@ -641,9 +815,10 @@ export function createDesert(canvas) {
     const groundY = drawDunes(sky, time);
     const pool = drawOasis(groundY, sky, time);
     drawLife(pool, groundY, sky, time);
-    if (animals.camel)  drawCamel(groundY, sky, time);
-    if (animals.owl)    drawOwl(groundY, sky, time);
-    if (animals.coyote) drawCoyote(groundY, sky, time);
+    // Draw back to front: camel furthest left, then owl (right), coyote, snake, fox
+    if (animals.camel)  drawCamel(pool, groundY, sky, time);
+    if (animals.owl)    drawOwl(pool, groundY, sky, time);
+    if (animals.coyote) drawCoyote(pool, groundY, sky, time);
     if (animals.snake)  drawSnake(pool, groundY, sky, time);
     if (animals.fox)    drawFox(pool, groundY, sky, time);
     raf = requestAnimationFrame(frame);
