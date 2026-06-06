@@ -69,8 +69,8 @@ const rgb = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 // curl and the foliage colour/shape at its tip.
 function buildTree(checkins) {
   const n = checkins.length;
-  const trunkLen = clamp(150 + n * 2.4, 150, 300);
-  const trunkThick = clamp(14 + n * 0.16, 14, 26);
+  const trunkLen = clamp(190 + n * 3.2, 190, 420);
+  const trunkThick = clamp(18 + n * 0.22, 18, 34);
   const nodes = [{
     parent: -1, depth: 0, length: trunkLen, thick: trunkThick,
     emo: 'calm', curl: 0.015, droop: 0, spread: 0, side: 0,
@@ -116,7 +116,7 @@ function makeParticle(kind, W, H) {
     case 'petals':
       return { x: r() * W, y: r() * -H, vy: 0.6 + r() * 0.8, vx: -0.4 + r() * 0.8, rot: r() * TAU, vr: -0.04 + r() * 0.08, s: 4 + r() * 4 };
     case 'butterflies':
-      return { x: r() * W, y: H * (0.2 + r() * 0.6), phase: r() * TAU, sp: 0.6 + r() * 0.8, amp: 18 + r() * 24, dir: r() < 0.5 ? 1 : -1, s: 5 + r() * 3, flap: r() * TAU };
+      return { x: r() * W, y: H * (0.2 + r() * 0.6), phase: r() * TAU, sp: 0.6 + r() * 0.8, amp: 18 + r() * 24, dir: r() < 0.5 ? 1 : -1, s: 5 + r() * 3, flap: r() * TAU, seed: (Math.random() * 100) | 0 };
     case 'embers':
       return { x: r() * W, y: H + r() * 40, vy: -(1.4 + r() * 1.8), vx: -0.6 + r() * 1.2, life: 0, max: 120 + r() * 80, s: 1.5 + r() * 2 };
     case 'spores':
@@ -138,7 +138,9 @@ export function createWorld(canvas) {
   let nodes = [];
   let weather = 'petals';
   let moth = false;
+  let steps = 0;
   let parts = [];
+  let stepButterflies = [];
   let fireflies = [];
   let raf = 0;
   let t0 = performance.now();
@@ -150,6 +152,7 @@ export function createWorld(canvas) {
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     rebuildParticles();
+    rebuildStepButterflies();
   }
 
   function rebuildParticles() {
@@ -161,17 +164,25 @@ export function createWorld(canvas) {
     });
   }
 
-  function setData({ checkins, weather: w, moth: m }) {
+  function rebuildStepButterflies() {
+    const density = clamp(steps / 12000, 0, 1);
+    const n = Math.round(density * 16);
+    stepButterflies = Array.from({ length: n }, () => makeParticle('butterflies', W, H));
+  }
+
+  function setData({ checkins, weather: w, moth: m, steps: s = 0 }) {
     nodes = buildTree(checkins);
     if (w && w !== weather) { weather = w; rebuildParticles(); }
     else if (w) weather = w;
     moth = !!m;
+    const newSteps = s | 0;
+    if (newSteps !== steps) { steps = newSteps; rebuildStepButterflies(); }
   }
 
   // recursive limb draw: tapered bark limbs, children attach along the parent,
   // emotion-coloured foliage clustered at the tips. Sways with the wind.
   function drawTree(time, daylight) {
-    const groundY = H * 0.82;
+    const groundY = H * 0.87;
     const ox = W * 0.5;
     const wind = Math.sin(time * 0.0005) * 0.05 + Math.sin(time * 0.0013) * 0.025;
     const foliage = [];
@@ -337,17 +348,98 @@ export function createWorld(canvas) {
     }
   }
 
+  function drawBackgroundForest(daylight, time) {
+    const density = clamp(steps / 12000, 0, 1);
+    if (density <= 0) return;
+    const groundY = H * 0.87;
+    const d = 0.35 + daylight * 0.65;
+
+    // background trees — silhouettes behind the main tree
+    const treeCount = Math.round(density * 8);
+    const tr = rng(42);
+    for (let i = 0; i < treeCount; i++) {
+      const x = (tr() * 0.9 + 0.05) * W;
+      const h2 = (60 + tr() * 120) * density;
+      const thick = 3 + tr() * 5;
+      const layer = tr(); // 0 = far back, 1 = near
+      const alpha = 0.18 + layer * 0.22;
+      const sway = Math.sin(time * 0.0004 + i * 1.1) * 4;
+      // trunk
+      ctx.strokeStyle = `rgba(${(40 * d) | 0},${(30 * d) | 0},${(20 * d) | 0},${alpha})`;
+      ctx.lineWidth = thick;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, groundY);
+      ctx.quadraticCurveTo(x + sway, groundY - h2 * 0.6, x + sway * 1.4, groundY - h2);
+      ctx.stroke();
+      // canopy blob
+      const canopyR = 22 + tr() * 38;
+      const g = ctx.createRadialGradient(x + sway * 1.4, groundY - h2, 0, x + sway * 1.4, groundY - h2, canopyR);
+      g.addColorStop(0, `rgba(${(34 * d) | 0},${(80 * d) | 0},${(38 * d) | 0},${alpha + 0.1})`);
+      g.addColorStop(1, `rgba(${(34 * d) | 0},${(80 * d) | 0},${(38 * d) | 0},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x + sway * 1.4, groundY - h2, canopyR, 0, TAU);
+      ctx.fill();
+    }
+
+    // ground ferns / bushes along the base
+    const plantCount = Math.round(density * 22);
+    const pr = rng(77);
+    for (let i = 0; i < plantCount; i++) {
+      const x = pr() * W;
+      const size = 6 + pr() * 14;
+      const alpha = 0.35 + pr() * 0.45;
+      const sway = Math.sin(time * 0.0007 + i * 0.9) * 1.2;
+      ctx.strokeStyle = `rgba(${(50 * d) | 0},${(110 * d) | 0},${(55 * d) | 0},${alpha})`;
+      ctx.lineWidth = 1.4;
+      ctx.lineCap = 'round';
+      // 3-5 fronds per plant
+      const fronds = 3 + Math.round(pr() * 2);
+      for (let f = 0; f < fronds; f++) {
+        const angle = -Math.PI / 2 + (f / (fronds - 1) - 0.5) * Math.PI * 0.9 + sway * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(x, groundY);
+        ctx.quadraticCurveTo(
+          x + Math.cos(angle) * size * 0.5 + sway,
+          groundY + Math.sin(angle) * size * 0.5,
+          x + Math.cos(angle) * size + sway,
+          groundY + Math.sin(angle) * size,
+        );
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawStepButterflies(time) {
+    for (const p of stepButterflies) {
+      p.phase += 0.018 * p.sp; p.flap += 0.28;
+      const x = p.x + Math.cos(p.phase) * p.amp * p.dir;
+      const y = p.y + Math.sin(p.phase * 1.7) * p.amp * 0.5;
+      const f = Math.abs(Math.sin(p.flap));
+      // mix of colours: blue, yellow, white, pink
+      const cols = ['rgba(120,180,255,0.88)', 'rgba(255,220,80,0.88)', 'rgba(240,200,255,0.88)', 'rgba(180,240,160,0.88)'];
+      ctx.fillStyle = cols[p.seed % cols.length];
+      ctx.save(); ctx.translate(x, y);
+      ctx.beginPath(); ctx.ellipse(-p.s * f, 0, p.s * 1.1, p.s * 0.75, 0.5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(p.s * f, 0, p.s * 1.1, p.s * 0.75, -0.5, 0, TAU); ctx.fill();
+      ctx.restore();
+      p.x += 0.18 * p.dir;
+      if (p.x > W + 40) p.x = -40; if (p.x < -40) p.x = W + 40;
+    }
+  }
+
   function drawGround(daylight) {
-    const groundY = H * 0.82;
-    const g = ctx.createLinearGradient(0, groundY - 30, 0, H);
+    const groundY = H * 0.87;
+    const g = ctx.createLinearGradient(0, groundY - 20, 0, H);
     const dark = 0.4 + daylight * 0.6;
     g.addColorStop(0, `rgb(${60 * dark},${110 * dark},${64 * dark})`);
     g.addColorStop(1, `rgb(${38 * dark},${72 * dark},${44 * dark})`);
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(0, groundY);
-    ctx.quadraticCurveTo(W * 0.3, groundY - 18, W * 0.55, groundY - 4);
-    ctx.quadraticCurveTo(W * 0.8, groundY + 12, W, groundY - 8);
+    ctx.quadraticCurveTo(W * 0.3, groundY - 14, W * 0.55, groundY - 3);
+    ctx.quadraticCurveTo(W * 0.8, groundY + 10, W, groundY - 6);
     ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
     ctx.fill();
   }
@@ -483,9 +575,11 @@ export function createWorld(canvas) {
     const time = now - t0;
     const sky = skyState(clockDate());
     drawSky(sky);
+    drawBackgroundForest(sky.day, time);
     drawGround(sky.day);
     drawTree(time, sky.day);
     drawWeather(time, sky.day);
+    drawStepButterflies(time);
     if (sky.day < 0.3) drawFireflies(time);
     if (moth && sky.day < 0.5) drawMoth(time);
     raf = requestAnimationFrame(frame);

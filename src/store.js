@@ -7,12 +7,13 @@ const listeners = new Set();
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { checkins: [] };
+    if (!raw) return { checkins: [], steps: [] };
     const data = JSON.parse(raw);
     if (!Array.isArray(data.checkins)) data.checkins = [];
+    if (!Array.isArray(data.steps)) data.steps = [];
     return data;
   } catch {
-    return { checkins: [] };
+    return { checkins: [], steps: [] };
   }
 }
 
@@ -53,8 +54,29 @@ export function addCheckin(emotion, intensity = 2, note = '') {
   return c;
 }
 
+export function addSteps(count) {
+  const entry = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ts: Date.now(), count: Math.max(0, count | 0) };
+  state = { ...state, steps: [...state.steps, entry] };
+  persist();
+  emit();
+  return entry;
+}
+
+export function getSteps() {
+  return state.steps;
+}
+
+export function totalSteps() {
+  return state.steps.reduce((s, e) => s + e.count, 0);
+}
+
+export function stepsToday() {
+  const today = dayKey(Date.now());
+  return state.steps.filter((e) => dayKey(e.ts) === today).reduce((s, e) => s + e.count, 0);
+}
+
 export function resetWorld() {
-  state = { checkins: [] };
+  state = { checkins: [], steps: [] };
   persist();
   emit();
 }

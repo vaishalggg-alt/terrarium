@@ -133,6 +133,17 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 }
 .grow:hover { filter: brightness(1.05); }
 
+/* ---- forest tabs (mood / steps) ---- */
+.forest-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.ftab {
+  flex: 1; padding: 9px; border-radius: 12px; border: 1.5px solid #ddd;
+  background: #f7f5f0; font-family: 'Nunito'; font-weight: 700; font-size: 14px;
+  cursor: pointer; transition: all .15s;
+}
+.ftab.on { background: #a8e0c4; border-color: #7fc8a9; color: #1f3b2c; }
+.step-stats { display: flex; gap: 20px; margin: 4px 0 14px; font-size: 14px; color: #555; }
+.step-stats b { color: #2a5c3a; font-size: 18px; display: block; }
+
 /* ---- letter writer (ocean) ---- */
 .letter {
   width: 100%; padding: 13px 14px; font-size: 14.5px; line-height: 1.5;

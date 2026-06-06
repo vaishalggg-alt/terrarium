@@ -5,6 +5,7 @@ import { EMOTIONS, EMOTION_KEYS } from './emotions.js';
 import {
   subscribe, getCheckins, addCheckin, resetWorld,
   dominantEmotion, mothAwakened, checkinStreak, checkedInToday,
+  addSteps, getSteps, totalSteps, stepsToday,
 } from './store.js';
 import {
   subscribeOcean, getLetters, addLetter, resetOcean,
@@ -23,6 +24,7 @@ import { createDesert } from './desert.js';
 const html = htm.bind(h);
 
 const useCheckins = () => useSyncExternalStore(subscribe, getCheckins);
+const useSteps = () => useSyncExternalStore(subscribe, getSteps);
 const useLetters = () => useSyncExternalStore(subscribeOcean, getLetters);
 const useWater = () => useSyncExternalStore(subscribeDesert, getLogs);
 const useBiome = () => useSyncExternalStore(subscribeBiome, getBiome);
@@ -44,6 +46,7 @@ function ForestWorld() {
   const ref = useRef(null);
   const world = useRef(null);
   const checkins = useCheckins();
+  const steps = useSteps();
 
   useEffect(() => {
     world.current = createWorld(ref.current);
@@ -55,8 +58,9 @@ function ForestWorld() {
       checkins,
       weather: dominantEmotion() ? EMOTIONS[dominantEmotion()].weather : 'petals',
       moth: mothAwakened(),
+      steps: totalSteps(),
     });
-  }, [checkins]);
+  }, [checkins, steps]);
 
   return html`<canvas ref=${ref} class="world"></canvas>`;
 }
@@ -97,50 +101,84 @@ function DesertWorld() {
 
 // ---- check-in panels -------------------------------------------------------
 
-function ForestCheckIn({ onDone }) {
+function ForestCheckIn({ onDone, initialTab = 'mood' }) {
+  const [tab, setTab] = useState(initialTab);
   const [emo, setEmo] = useState(null);
   const [intensity, setIntensity] = useState(2);
   const [note, setNote] = useState('');
+  const [stepInput, setStepInput] = useState('');
 
-  function submit() {
+  function submitMood() {
     if (!emo) return;
     addCheckin(emo, intensity, note);
     onDone();
   }
 
+  function submitSteps() {
+    const n = parseInt(stepInput, 10);
+    if (!n || n <= 0) return;
+    addSteps(n);
+    onDone();
+  }
+
+  const todaySteps = stepsToday();
+  const allSteps = totalSteps();
+
   return html`
     <div class="sheet">
-      <h2>How are you, really?</h2>
-      <p class="sub">Pick what's closest. Your tree grows a new branch.</p>
-      <div class="emos">
-        ${EMOTION_KEYS.map((k) => {
-          const e = EMOTIONS[k];
-          return html`
-            <button
-              key=${k}
-              class=${'emo' + (emo === k ? ' on' : '')}
-              style=${{ '--c': e.color }}
-              onClick=${() => setEmo(k)}>
-              <span class="ico">${e.emoji}</span>
-              <span class="lbl">${e.label}</span>
-            </button>`;
-        })}
+      <div class="forest-tabs">
+        <button class=${'ftab' + (tab === 'mood' ? ' on' : '')} onClick=${() => setTab('mood')}>🌿 Mood</button>
+        <button class=${'ftab' + (tab === 'steps' ? ' on' : '')} onClick=${() => setTab('steps')}>🚶 Steps</button>
       </div>
-      ${emo && html`
-        <div class="detail">
-          <p class="blurb">${EMOTIONS[emo].blurb}</p>
-          <div class="intensity">
-            <span>a little</span>
-            <input type="range" min="1" max="3" step="1"
-              value=${intensity}
-              onInput=${(ev) => setIntensity(+ev.target.value)} />
-            <span>a lot</span>
-          </div>
-          <input class="note" placeholder="one line, if you want…"
-            value=${note} maxLength=${80}
-            onInput=${(ev) => setNote(ev.target.value)} />
-          <button class="grow" onClick=${submit}>Grow my world →</button>
-        </div>`}
+
+      ${tab === 'mood' && html`
+        <h2>How are you, really?</h2>
+        <p class="sub">Pick what's closest. Your tree grows a new branch.</p>
+        <div class="emos">
+          ${EMOTION_KEYS.map((k) => {
+            const e = EMOTIONS[k];
+            return html`
+              <button
+                key=${k}
+                class=${'emo' + (emo === k ? ' on' : '')}
+                style=${{ '--c': e.color }}
+                onClick=${() => setEmo(k)}>
+                <span class="ico">${e.emoji}</span>
+                <span class="lbl">${e.label}</span>
+              </button>`;
+          })}
+        </div>
+        ${emo && html`
+          <div class="detail">
+            <p class="blurb">${EMOTIONS[emo].blurb}</p>
+            <div class="intensity">
+              <span>a little</span>
+              <input type="range" min="1" max="3" step="1"
+                value=${intensity}
+                onInput=${(ev) => setIntensity(+ev.target.value)} />
+              <span>a lot</span>
+            </div>
+            <input class="note" placeholder="one line, if you want…"
+              value=${note} maxLength=${80}
+              onInput=${(ev) => setNote(ev.target.value)} />
+            <button class="grow" onClick=${submitMood}>Grow my world →</button>
+          </div>`}
+      `}
+
+      ${tab === 'steps' && html`
+        <h2>How far did you walk?</h2>
+        <p class="sub">Every step plants life in your forest — trees, ferns, and butterflies appear as you explore.</p>
+        <div class="step-stats">
+          <span><b>${todaySteps.toLocaleString()}</b> steps today</span>
+          <span><b>${allSteps.toLocaleString()}</b> total</span>
+        </div>
+        <input class="note" type="number" placeholder="steps walked…" min="1" max="99999"
+          value=${stepInput}
+          onInput=${(ev) => setStepInput(ev.target.value)} />
+        <button class=${'grow' + (stepInput && parseInt(stepInput) > 0 ? '' : ' off')} onClick=${submitSteps}>
+          Plant the walk →
+        </button>
+      `}
     </div>`;
 }
 
@@ -214,9 +252,9 @@ const FOREST = {
   CheckIn: ForestCheckIn,
   logo: '🌲',
   title: 'Your Forest',
-  count: (c) => `${c.length} branches`,
+  count: (c) => `${c.length} branches · ${totalSteps().toLocaleString()} steps`,
   empty: 'Plant your first branch',
-  again: (today) => (today ? 'Check in again' : 'Daily check-in'),
+  again: (today) => (today ? 'Check in / log walk' : 'Daily check-in'),
   resetMsg: 'Fossilize and clear this forest? It cannot be undone.',
 };
 
