@@ -242,9 +242,10 @@ export function createDesert(canvas) {
     const bx = cx + r + 14 + (1 - ease(cycle)) * 72;
     const by = groundY + 2;
 
+    const sc = Math.min(1, W / 500);
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(-1.95, 1.95); // face left (toward pool)
+    ctx.scale(1.9 * sc, 1.9 * sc); // head drawn at -x, naturally faces left toward pool
 
     const fur    = rgb([216, 186, 118].map((c) => c * d)); // pale sandy buff
     const shadow = rgb([170, 136, 75].map((c) => c * d));  // darker for shadow/markings
@@ -333,16 +334,17 @@ export function createDesert(canvas) {
     const d = 0.4 + sky.day * 0.6;
     const { cx, cy, r, ry } = pool;
 
-    // Positioned at left pool edge
-    const bx = cx - r - 18;
+    // Coiled at the left pool edge
+    const bx = cx - r - 14;
     const by = groundY + 6;
 
     // Gentle head sway
     const headSway = Math.sin(snakeS.phase * 0.8) * 0.12;
 
+    const sc = Math.min(1, W / 500);
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.4, 2.4);
+    ctx.scale(2.2 * sc, 2.2 * sc);
 
     const bodyTan  = rgb([188, 155, 90].map((c) => c * d));  // tan base
     const bodyDark = rgb([95, 68, 30].map((c) => c * d));    // dark saddles
@@ -476,12 +478,14 @@ export function createDesert(canvas) {
 
     const cycle = (Math.sin(coyoteS.phase) * 0.5 + 0.5);
     const drinkT = clamp((cycle - 0.45) / 0.45, 0, 1);
-    const bx = cx + r + 26 + (1 - ease(cycle)) * 90;
+    // Far right of canvas, approaches from edge toward pool
+    const bx = W * 0.86 - ease(cycle) * 30;
     const by = groundY + 2;
 
+    const sc = Math.min(1, W / 500);
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(-2.65, 2.65); // face left
+    ctx.scale(2.4 * sc, 2.4 * sc); // head drawn at -x, naturally faces left toward pool
 
     const fur    = rgb([170, 148, 105].map((c) => c * d)); // gray-brown
     const dark   = rgb([82, 62, 32].map((c) => c * d));
@@ -578,17 +582,18 @@ export function createDesert(canvas) {
     const d = 0.4 + sky.day * 0.6;
     const { cx, r } = pool;
 
-    // Perched on a rock just right of pool
-    const bx = cx + r + 65;
-    const by = groundY - 10; // slightly elevated (on rock)
+    // Perched on elevated rock, left side of scene — watches pool from above
+    const bx = W * 0.20;
+    const by = groundY - 58;
     const swivel = Math.sin(owlS.phase * 0.55) * 0.28;
-    // Occasional head bob (dipping to drink)
+    // Occasional head bob
     const bobT = clamp((Math.sin(owlS.phase * 1.4) - 0.65) / 0.35, 0, 1);
     const bob = bobT * 8;
 
+    const sc = Math.min(1, W / 500);
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(-1.95, 1.95); // face left
+    ctx.scale(1.85 * sc, 1.85 * sc); // owl is symmetric; faces pool (rightward)
 
     const body  = rgb([152, 118, 68].map((c) => c * d));  // warm brown
     const dark  = rgb([72, 50, 22].map((c) => c * d));
@@ -690,9 +695,10 @@ export function createDesert(canvas) {
     // Occasional head dip to water
     const dipT = clamp((Math.sin(camelS.phase * 0.7) - 0.3) / 0.5, 0, 1);
 
+    const sc = Math.min(1, W / 500);
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(3.8, 3.8); // Camel is by far the biggest
+    ctx.scale(2.9 * sc, 2.9 * sc); // clearly the largest animal
 
     const fur    = rgb([198, 163, 98].map((c) => c * d));  // tawny camel
     const dark   = rgb([138, 105, 55].map((c) => c * d));
