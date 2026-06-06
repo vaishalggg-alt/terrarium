@@ -165,8 +165,8 @@ export function createWorld(canvas) {
   }
 
   function rebuildStepButterflies() {
-    const density = clamp(steps / 12000, 0, 1);
-    const n = Math.round(density * 16);
+    const density = clamp(steps / 4000, 0, 1);
+    const n = Math.round(density * 18);
     stepButterflies = Array.from({ length: n }, () => makeParticle('butterflies', W, H));
   }
 
@@ -240,29 +240,41 @@ export function createWorld(canvas) {
     for (const f of foliage) drawFoliage(f.x, f.y, f.n, daylight, time);
   }
 
-  // a cluster of small emotion-coloured leaves/blooms at a limb tip
+  // a cluster of emotion-coloured leaves/blooms at a limb tip
   function drawFoliage(x, y, n, daylight, time) {
     const e = EMOTIONS[n.emo] || EMOTIONS.calm;
     const col = shade(e.leaf, daylight, 0);
-    const count = n.tip ? 4 + n.intensity : 2;
+    const col2 = shade(e.leaf, daylight * 0.7, 0); // slightly darker variant for depth
     const r = rng(n.seed * 7 + 3);
-    const base = (n.tip ? 6 : 4.5) + n.intensity * 0.8;
+    // bigger clusters: tips get a large filled blob + individual leaves on top
+    const base = (n.tip ? 16 : 10) + n.intensity * 2.2;
+    const spread = base * 3.2;
 
-    // vulnerable growth casts a soft glow halo behind the cluster
+    // soft filled canopy blob behind the leaves — makes it look bushy not spiky
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = col2;
+    ctx.beginPath();
+    ctx.arc(x + (r() - 0.5) * 4, y - base * 0.4, base * 1.6, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+
+    // vulnerable growth casts a soft glow halo
     if (n.emo === 'vulnerable') {
       ctx.save();
       ctx.globalAlpha = 0.3 + 0.18 * Math.sin(time * 0.003 + n.seed);
-      const g = ctx.createRadialGradient(x, y, 0, x, y, base * 3);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, base * 4);
       g.addColorStop(0, e.leaf); g.addColorStop(1, 'rgba(212,194,239,0)');
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(x, y, base * 3, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, base * 4, 0, TAU); ctx.fill();
       ctx.restore();
     }
 
+    const count = n.tip ? 10 + n.intensity * 3 : 5;
     for (let p = 0; p < count; p++) {
-      const dx = (r() - 0.5) * base * 2.4;
-      const dy = (r() - 0.5) * base * 2.4 - 1;
-      const sz = base * (0.7 + r() * 0.6);
+      const dx = (r() - 0.5) * spread;
+      const dy = (r() - 0.5) * spread - base * 0.3;
+      const sz = base * (0.55 + r() * 0.7);
       drawLeaf(x + dx, y + dy, sz, n.bloom, col, r);
     }
   }
@@ -348,63 +360,110 @@ export function createWorld(canvas) {
     }
   }
 
+  function drawBgTree(x, groundY, height, trunkW, canopyR, alpha, d, sway) {
+    const tx = x + sway * 1.3;
+    const ty = groundY - height;
+
+    // trunk — tapered quadratic
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = `rgba(${(52 * d) | 0},${(36 * d) | 0},${(22 * d) | 0},${alpha})`;
+    ctx.lineWidth = trunkW;
+    ctx.beginPath();
+    ctx.moveTo(x, groundY);
+    ctx.quadraticCurveTo(x + sway * 0.5, groundY - height * 0.55, tx, ty);
+    ctx.stroke();
+
+    // layered canopy — 3 overlapping filled blobs at slightly different positions
+    // gives a natural leafy silhouette instead of a single gradient circle
+    const blobs = [
+      { ox: 0,              oy: 0,              r: canopyR,        a: alpha + 0.15 },
+      { ox: -canopyR * 0.4, oy: -canopyR * 0.3, r: canopyR * 0.78, a: alpha + 0.12 },
+      { ox:  canopyR * 0.38,oy: -canopyR * 0.2, r: canopyR * 0.72, a: alpha + 0.10 },
+      { ox:  canopyR * 0.1, oy: -canopyR * 0.55,r: canopyR * 0.62, a: alpha + 0.08 },
+    ];
+    for (const b of blobs) {
+      ctx.fillStyle = `rgba(${(38 * d) | 0},${(88 * d) | 0},${(44 * d) | 0},${b.a})`;
+      ctx.beginPath();
+      ctx.arc(tx + b.ox, ty + b.oy, b.r, 0, TAU);
+      ctx.fill();
+    }
+  }
+
   function drawBackgroundForest(daylight, time) {
-    const density = clamp(steps / 12000, 0, 1);
+    // full background at ~3000 steps; already noticeable at ~500
+    const density = clamp(steps / 3000, 0, 1);
     if (density <= 0) return;
     const groundY = H * 0.87;
     const d = 0.35 + daylight * 0.65;
 
-    // background trees — silhouettes behind the main tree
-    const treeCount = Math.round(density * 8);
-    const tr = rng(42);
-    for (let i = 0; i < treeCount; i++) {
-      const x = (tr() * 0.9 + 0.05) * W;
-      const h2 = (60 + tr() * 120) * density;
-      const thick = 3 + tr() * 5;
-      const layer = tr(); // 0 = far back, 1 = near
-      const alpha = 0.18 + layer * 0.22;
-      const sway = Math.sin(time * 0.0004 + i * 1.1) * 4;
-      // trunk
-      ctx.strokeStyle = `rgba(${(40 * d) | 0},${(30 * d) | 0},${(20 * d) | 0},${alpha})`;
-      ctx.lineWidth = thick;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(x, groundY);
-      ctx.quadraticCurveTo(x + sway, groundY - h2 * 0.6, x + sway * 1.4, groundY - h2);
-      ctx.stroke();
-      // canopy blob
-      const canopyR = 22 + tr() * 38;
-      const g = ctx.createRadialGradient(x + sway * 1.4, groundY - h2, 0, x + sway * 1.4, groundY - h2, canopyR);
-      g.addColorStop(0, `rgba(${(34 * d) | 0},${(80 * d) | 0},${(38 * d) | 0},${alpha + 0.1})`);
-      g.addColorStop(1, `rgba(${(34 * d) | 0},${(80 * d) | 0},${(38 * d) | 0},0)`);
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(x + sway * 1.4, groundY - h2, canopyR, 0, TAU);
-      ctx.fill();
+    // --- far layer: tall trees spread across full width ---
+    // spaced evenly so they actually fill the scene
+    const farCount = 2 + Math.round(density * 10);
+    const fr = rng(42);
+    // pre-generate positions so they don't shift each frame
+    const farTrees = Array.from({ length: farCount }, (_, i) => {
+      const rx = fr(); const rh = fr(); const rth = fr(); const rcr = fr(); const rl = fr();
+      return {
+        x: (i / farCount + rx * (0.7 / farCount)) * W,
+        height: (H * 0.28 + rh * H * 0.22) * (0.6 + density * 0.4),
+        trunkW: 4 + rth * 5,
+        canopyR: W * 0.055 + rcr * W * 0.04,
+        layer: rl,
+      };
+    });
+    for (let i = 0; i < farTrees.length; i++) {
+      const t = farTrees[i];
+      const alpha = (0.22 + t.layer * 0.18) * density;
+      const sway = Math.sin(time * 0.00035 + i * 1.3) * 5;
+      drawBgTree(t.x, groundY, t.height, t.trunkW, t.canopyR, alpha, d, sway);
     }
 
-    // ground ferns / bushes along the base
-    const plantCount = Math.round(density * 22);
+    // --- near layer: wider, darker trees in the foreground corners ---
+    const nearCount = 1 + Math.round(density * 4);
+    const nr = rng(93);
+    const nearTrees = Array.from({ length: nearCount }, (_, i) => {
+      // cluster near left/right edges so main tree stays clear
+      const side = i % 2;
+      const rx = nr(); const rh = nr(); const rth = nr(); const rcr = nr();
+      return {
+        x: side === 0 ? rx * W * 0.28 : W * 0.72 + rx * W * 0.28,
+        height: (H * 0.38 + rh * H * 0.18) * (0.7 + density * 0.3),
+        trunkW: 7 + rth * 6,
+        canopyR: W * 0.075 + rcr * W * 0.05,
+      };
+    });
+    for (let i = 0; i < nearTrees.length; i++) {
+      const t = nearTrees[i];
+      const alpha = (0.38 + 0.2 * density);
+      const sway = Math.sin(time * 0.00045 + i * 2.1) * 6;
+      drawBgTree(t.x, groundY, t.height, t.trunkW, t.canopyR, alpha, d, sway);
+    }
+
+    // --- ground layer: bushes and ferns along the base ---
+    const plantCount = 4 + Math.round(density * 28);
     const pr = rng(77);
-    for (let i = 0; i < plantCount; i++) {
-      const x = pr() * W;
-      const size = 6 + pr() * 14;
-      const alpha = 0.35 + pr() * 0.45;
-      const sway = Math.sin(time * 0.0007 + i * 0.9) * 1.2;
-      ctx.strokeStyle = `rgba(${(50 * d) | 0},${(110 * d) | 0},${(55 * d) | 0},${alpha})`;
-      ctx.lineWidth = 1.4;
-      ctx.lineCap = 'round';
-      // 3-5 fronds per plant
-      const fronds = 3 + Math.round(pr() * 2);
-      for (let f = 0; f < fronds; f++) {
-        const angle = -Math.PI / 2 + (f / (fronds - 1) - 0.5) * Math.PI * 0.9 + sway * 0.08;
+    const plants = Array.from({ length: plantCount }, () => ({
+      x: pr() * W,
+      size: 10 + pr() * 22,
+      alpha: 0.4 + pr() * 0.4,
+      fronds: 3 + Math.round(pr() * 3),
+      swayOff: pr() * TAU,
+    }));
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < plants.length; i++) {
+      const p = plants[i];
+      const sway = Math.sin(time * 0.0007 + p.swayOff) * 1.4;
+      ctx.strokeStyle = `rgba(${(55 * d) | 0},${(115 * d) | 0},${(58 * d) | 0},${p.alpha * density})`;
+      for (let f = 0; f < p.fronds; f++) {
+        const angle = -Math.PI / 2 + (p.fronds === 1 ? 0 : (f / (p.fronds - 1) - 0.5)) * Math.PI * 0.85 + sway * 0.06;
         ctx.beginPath();
-        ctx.moveTo(x, groundY);
+        ctx.moveTo(p.x, groundY);
         ctx.quadraticCurveTo(
-          x + Math.cos(angle) * size * 0.5 + sway,
-          groundY + Math.sin(angle) * size * 0.5,
-          x + Math.cos(angle) * size + sway,
-          groundY + Math.sin(angle) * size,
+          p.x + Math.cos(angle) * p.size * 0.55 + sway,
+          groundY + Math.sin(angle) * p.size * 0.55,
+          p.x + Math.cos(angle) * p.size + sway,
+          groundY + Math.sin(angle) * p.size,
         );
         ctx.stroke();
       }
