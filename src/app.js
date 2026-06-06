@@ -13,7 +13,7 @@ import {
 } from './ocean-store.js';
 import {
   subscribeDesert, getLogs, addWater, resetDesert,
-  oasisFill, cupsToday, goalMet, wateredToday, hydrationStreak, GOAL,
+  oasisFill, litresToday, goalMet, wateredToday, hydrationStreak, animalsPresent, GOAL,
 } from './desert-store.js';
 import { BIOMES, subscribeBiome, getBiome, setBiome } from './biome-store.js';
 import { subscribeClock, getClockMode, cycleClock, CLOCK_LABEL, CLOCK_NAME } from './clock.js';
@@ -93,7 +93,7 @@ function DesertWorld() {
   }, []);
 
   useEffect(() => {
-    world.current?.setData({ fill: oasisFill(), cups: cupsToday(), fox: goalMet() });
+    world.current?.setData({ fill: oasisFill(), litres: litresToday(), animals: animalsPresent() });
   }, [logs]);
 
   return html`<canvas ref=${ref} class="world"></canvas>`;
@@ -209,8 +209,8 @@ function OceanCheckIn({ onDone }) {
 }
 
 function DesertCheckIn({ onDone }) {
-  const cups = cupsToday();
-  const pct = Math.min(100, Math.round((cups / GOAL) * 100));
+  const litres = litresToday();
+  const pct = Math.min(100, Math.round((litres / GOAL) * 100));
 
   function add(n) {
     addWater(n);
@@ -220,11 +220,12 @@ function DesertCheckIn({ onDone }) {
   return html`
     <div class="sheet">
       <h2>Water your oasis</h2>
-      <p class="sub">${cups} of ${GOAL} glasses today — the pool rises with every one.</p>
+      <p class="sub">${litres.toFixed(2)}L of ${GOAL}L today — animals appear as the pool rises.</p>
       <div class="water-meter"><div class="water-fill" style=${{ width: pct + '%' }}></div></div>
       <div class="water-btns">
-        <button class="wbtn" onClick=${() => add(1)}>💧 +1 glass</button>
-        <button class="wbtn" onClick=${() => add(2)}>💧💧 +2</button>
+        <button class="wbtn" onClick=${() => add(0.25)}>💧 +250ml</button>
+        <button class="wbtn" onClick=${() => add(0.5)}>💧 +500ml</button>
+        <button class="wbtn" onClick=${() => add(1)}>💧💧 +1L</button>
       </div>
     </div>`;
 }
@@ -274,7 +275,7 @@ const DESERT = {
   CheckIn: DesertCheckIn,
   logo: '🏜️',
   title: 'Your Oasis',
-  count: () => `${cupsToday()} of ${GOAL} glasses`,
+  count: () => `${litresToday().toFixed(2)}L of ${GOAL}L`,
   empty: 'Pour the first glass',
   again: (today) => (today ? 'Drink more water' : 'Start hydrating'),
   resetMsg: 'Clear the whole hydration log? It cannot be undone.',
@@ -302,7 +303,7 @@ function App() {
   const dom = biome === 'forest' ? dominantEmotion() : null;
   const moth = biome === 'forest' && mothAwakened();
   const whale = biome === 'ocean' && whaleAwakened();
-  const fox = biome === 'desert' && goalMet();
+  const animals = biome === 'desert' ? animalsPresent() : null;
 
   function reset() {
     if (!confirm(cfg.resetMsg)) return;
@@ -335,7 +336,11 @@ function App() {
 
       ${moth && html`<div class="discovery">🦋 A glowing moth has appeared — it only comes when you've shown vulnerability three nights running.</div>`}
       ${whale && html`<div class="discovery">🐋 A luminous whale now glides through your sea — drawn up from the deep once you let five letters go.</div>`}
-      ${fox && html`<div class="discovery">🦊 A fennec fox padded out to drink — it only comes when the oasis is full. Goal met.</div>`}
+      ${animals?.camel && html`<div class="discovery">🐪 A camel has arrived — the oasis is full at ${GOAL}L. Incredible dedication.</div>`}
+      ${animals && !animals.camel && animals.owl && html`<div class="discovery">🦉 A burrowing owl is watching from the rocks — you've drunk 5L today.</div>`}
+      ${animals && !animals.owl && animals.coyote && html`<div class="discovery">🐺 A coyote crept in at dusk — 4L reached. Halfway to a full oasis.</div>`}
+      ${animals && !animals.coyote && animals.snake && html`<div class="discovery">🐍 A rattlesnake coiled up near the pool — 3L down today.</div>`}
+      ${animals && !animals.snake && animals.fox && html`<div class="discovery">🦊 A fennec fox padded out to drink — keep going to attract more life.</div>`}
 
       <${Switcher} active=${biome} />
 

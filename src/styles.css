@@ -165,8 +165,9 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
   transition: width .4s cubic-bezier(.2,.8,.2,1);
 }
 .water-btns { display: flex; gap: 10px; }
+.water-btns { flex-wrap: wrap; }
 .wbtn {
-  flex: 1; font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 15px;
+  flex: 1; min-width: 80px; font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 15px;
   color: #123a47; background: #cdeef6; border: none;
   border-radius: 14px; padding: 15px; cursor: pointer;
   transition: filter .15s ease, transform .12s ease;

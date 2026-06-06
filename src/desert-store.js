@@ -1,11 +1,9 @@
-// Reactive localStorage store for the Desert biome — a hydration tracker
-// themed as an oasis. Every glass of water you log raises the pool and brings
-// more life to the sand around it. The pool level reflects *today's* intake
-// (it dries back overnight, like real thirst), while the full log feeds the
-// streak.
+// Reactive localStorage store for the Desert biome.
+// Hydration is tracked in litres. The oasis fills as you drink more,
+// and different animals appear at each litre milestone.
 
 const KEY = 'terrarium.desert.v1';
-export const GOAL = 8;                 // glasses/day to fill the oasis
+export const GOAL = 6;  // litres/day to fill the oasis completely
 const listeners = new Set();
 
 function load() {
@@ -36,8 +34,9 @@ export function getLogs() {
   return state.logs;
 }
 
-export function addWater(cups = 1) {
-  const l = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ts: Date.now(), cups };
+// amount is in litres (e.g. 0.25, 0.5, 1.0)
+export function addWater(amount = 0.25) {
+  const l = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ts: Date.now(), litres: +amount };
   state = { ...state, logs: [...state.logs, l] };
   persist();
   emit();
@@ -57,28 +56,51 @@ const dayKey = (ts) => {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 };
 
-export function cupsToday() {
+export function litresToday() {
   const today = dayKey(Date.now());
-  return state.logs.reduce((s, l) => (dayKey(l.ts) === today ? s + l.cups : s), 0);
+  return state.logs.reduce((s, l) => {
+    if (dayKey(l.ts) !== today) return s;
+    // backward-compat: old entries stored `cups` (treat 1 cup = 0.25L)
+    return s + (l.litres != null ? l.litres : (l.cups || 1) * 0.25);
+  }, 0);
 }
+
+// keep alias so app.js import still works
+export const cupsToday = litresToday;
 
 // 0..1 oasis fill from today's intake
 export function oasisFill() {
-  return Math.min(1, cupsToday() / GOAL);
+  return Math.min(1, litresToday() / GOAL);
 }
 
 export function goalMet() {
-  return cupsToday() >= GOAL;
+  return litresToday() >= GOAL;
 }
 
 export function wateredToday() {
-  return cupsToday() > 0;
+  return litresToday() > 0;
+}
+
+// Which animals have been unlocked by today's intake
+export function animalsPresent() {
+  const l = litresToday();
+  return {
+    fox:    l >= 2,
+    snake:  l >= 3,
+    coyote: l >= 4,
+    owl:    l >= 5,
+    camel:  l >= 6,
+  };
 }
 
 // streak of consecutive days where the goal was met, counting back from today
 export function hydrationStreak() {
   const byDay = {};
-  for (const l of state.logs) byDay[dayKey(l.ts)] = (byDay[dayKey(l.ts)] || 0) + l.cups;
+  for (const log of state.logs) {
+    const k = dayKey(log.ts);
+    const amt = log.litres != null ? log.litres : (log.cups || 1) * 0.25;
+    byDay[k] = (byDay[k] || 0) + amt;
+  }
   let streak = 0;
   const cursor = new Date();
   for (;;) {
