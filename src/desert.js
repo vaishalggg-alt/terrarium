@@ -331,37 +331,41 @@ export function createDesert(canvas) {
     }
   }
 
-  function drawLife(pool, groundY, sky, time) {
-    const d = 0.4 + sky.day * 0.6;
+  // Palms and shrubs placed BEFORE the pool so the water naturally overlaps
+  // their bases — like a real oasis where trees grow right at the water's edge.
+  function drawBackgroundVegetation(groundY, sky, time) {
     const sway = Math.sin(time * 0.0009) * 0.55;
-    const { cx, cy, r, ry } = pool;
+    // Mirror the pool geometry so we can keep vegetation just outside it
+    const cx = W * 0.5;
+    const maxR = Math.min(W * 0.40, 300);
+    const r = maxR * (0.28 + fill * 0.72);
 
-    // ── large shrubs behind pool (drawn before palms for depth) ───────────
+    // Shrubs on both sides of pool
     const sbr = rng(42);
-    const shrubArc = 10;
-    for (let i = 0; i < shrubArc; i++) {
-      const a = Math.PI + (i / (shrubArc - 1)) * Math.PI; // arc behind pool
-      const dist = r * (0.95 + sbr() * 0.45);
-      const sx = cx + Math.cos(a) * dist;
-      const sy = groundY + sbr() * 12;
+    for (let i = 0; i < 10; i++) {
+      const side = i % 2 ? 1 : -1;
+      const dist = r + 10 + sbr() * Math.min(W * 0.24, 170);
+      const sx = cx + side * dist;
+      const sy = groundY + 6 + sbr() * 14;
       if (sx > 5 && sx < W - 5) drawShrub(sx, sy, 16 + sbr() * 18, sky);
     }
 
-    // ── palm trees — cluster behind & around pool ──────────────────────────
-    const palmCount = 3 + Math.floor(fill * 9); // 3 always, up to 12
+    // Palm trees on left and right, spreading outward from pool edge
+    const palmCount = 3 + Math.floor(fill * 9);
     const pr = rng(5);
     for (let i = 0; i < palmCount; i++) {
-      // Spread palms in a wide arc around the pool
-      const a = (i / palmCount) * TAU + 0.3;
-      const distFrac = 0.85 + pr() * 0.55;
-      const px = cx + Math.cos(a) * r * distFrac * 1.1;
-      const py = groundY + 4 + pr() * 8;
-      const hgt = 65 + pr() * 95; // taller trees
-      const lean = (pr() - 0.5) * 0.35 + Math.cos(a) * 0.2;
-      if (px > -20 && px < W + 20) {
-        drawPalm(px, py, hgt, sky, sway * lean);
-      }
+      const side = i % 2 ? 1 : -1;
+      const dist = r + 14 + pr() * Math.min(W * 0.22, 155);
+      const px = cx + side * dist;
+      const py = groundY + 4 + pr() * 10;
+      const hgt = 65 + pr() * 95;
+      const lean = (pr() - 0.5) * 0.35 + side * 0.15;
+      if (px > -20 && px < W + 20) drawPalm(px, py, hgt, sky, sway * lean);
     }
+  }
+
+  function drawLife(pool, groundY, sky, time) {
+    const { cx, cy, r, ry } = pool;
 
     // ── reeds at pool edge ─────────────────────────────────────────────────
     const reedCount = 6 + Math.floor(litres * 1.5);
@@ -373,7 +377,7 @@ export function createDesert(canvas) {
       if (ex > 0 && ex < W) drawReeds(ex, ey, sky, 88 + i, time);
     }
 
-    // ── foreground shrubs on sand banks ───────────────────────────────────
+    // ── foreground shrubs on sand banks (strictly outside pool) ───────────
     const fgr = rng(77);
     const fgCount = 4 + Math.floor(litres * 1.2);
     for (let i = 0; i < Math.min(fgCount, 14); i++) {
@@ -384,13 +388,13 @@ export function createDesert(canvas) {
       if (sx > 8 && sx < W - 8) drawShrub(sx, sy, 10 + fgr() * 16, sky);
     }
 
-    // ── desert flowers at pool margins ────────────────────────────────────
+    // ── desert flowers strictly outside pool ──────────────────────────────
     if (litres >= 1) {
       const flr = rng(55);
       const flCount = Math.floor(litres * 1.8);
       for (let i = 0; i < Math.min(flCount, 10); i++) {
         const side = i % 2 ? 1 : -1;
-        const fx = cx + side * (r * 0.6 + flr() * r * 0.55);
+        const fx = cx + side * (r + 15 + flr() * 40);
         const fy = groundY + 6 + flr() * 18;
         if (fx > 10 && fx < W - 10) drawFlowers(fx, fy, sky, 55 + i * 7, time);
       }
@@ -1013,6 +1017,7 @@ export function createDesert(canvas) {
     drawSky(sky);
     drawBirds(sky, time);
     const groundY = drawDunes(sky, time);
+    drawBackgroundVegetation(groundY, sky, time);
     const pool = drawOasis(groundY, sky, time);
     drawLife(pool, groundY, sky, time);
     // Draw back to front by distance from viewer
