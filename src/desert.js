@@ -264,74 +264,132 @@ export function createDesert(canvas) {
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(1.9 * sc, 1.9 * sc); // head at -x → faces left toward pool ✓
+    ctx.scale(2.1 * sc, 2.1 * sc); // head at -x → faces left toward pool ✓
 
-    const fur    = rgb([216, 186, 118].map((c) => c * d));
-    const shadow = rgb([170, 136, 75].map((c) => c * d));
-    const belly  = `rgba(245,232,200,${d})`;
-    const dark   = rgb([38, 24, 8].map((c) => c * d));
+    // Colors matching real fennec: pale sandy body, cream belly/face, pink ear inner
+    const sand   = rgb([222, 192, 138].map((c) => c * d)); // main sandy coat
+    const light  = rgb([244, 232, 208].map((c) => c * d)); // cream belly + face
+    const dorsal = rgb([188, 154, 92].map((c) => c * d));  // darker back stripe
+    const earIn  = `rgba(${(212 * d) | 0},${(145 * d) | 0},${(138 * d) | 0},0.9)`;
+    const dark   = rgb([28, 16, 6].map((c) => c * d));
 
-    // Tail — bushy, raised, black-tipped
-    ctx.fillStyle = fur;
+    // ── tail: thick, fluffy, curled upward, cream tip ──────────────────────
+    ctx.strokeStyle = sand; ctx.lineWidth = 7; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(9, -2); ctx.bezierCurveTo(20, -16, 32, -14, 30, -4);
-    ctx.bezierCurveTo(28, 3, 18, 4, 10, 0); ctx.fill();
-    ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.ellipse(29, -7, 4.5, 3, -0.4, 0, TAU); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${0.85 * d})`;
-    ctx.beginPath(); ctx.ellipse(28, -8, 2.8, 2, -0.4, 0, TAU); ctx.fill();
+    ctx.moveTo(8, -2);
+    ctx.bezierCurveTo(18, -2, 26, -12, 24, -20);
+    ctx.bezierCurveTo(22, -26, 14, -24, 12, -18);
+    ctx.stroke();
+    // tip
+    ctx.strokeStyle = light; ctx.lineWidth = 4.5;
+    ctx.beginPath(); ctx.moveTo(14, -22); ctx.bezierCurveTo(13, -26, 10, -28, 9, -26); ctx.stroke();
+    ctx.fillStyle = dark; // black tip
+    ctx.beginPath(); ctx.arc(9.5, -27, 2.2, 0, TAU); ctx.fill();
 
-    // Body
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(0, -7, 13, 6.5, -0.05, 0, TAU); ctx.fill();
-    ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(-1, -4.5, 8.5, 4, 0, 0, TAU); ctx.fill();
+    // ── body: round fluffy oval ─────────────────────────────────────────────
+    ctx.fillStyle = sand;
+    ctx.beginPath(); ctx.ellipse(-1, -6, 14, 9, -0.08, 0, TAU); ctx.fill();
+    // darker dorsal stripe on top of body
+    ctx.fillStyle = dorsal;
+    ctx.beginPath(); ctx.ellipse(-1, -11, 10, 4.5, -0.08, 0, TAU); ctx.fill();
+    // cream belly patch
+    ctx.fillStyle = light;
+    ctx.beginPath(); ctx.ellipse(-2, -3, 9, 5.5, -0.05, 0, TAU); ctx.fill();
 
-    // Legs — diagonal trot gait. Front pair: fr/fl; back pair: br/bl
-    const crouch = drinkT * 2.5;
-    ctx.strokeStyle = fur; ctx.lineWidth = 2.8; ctx.lineCap = 'round';
-    // [hipX, hipY, foot swing offset, footY]
-    [[-7.5, -1, fl, 7 - crouch], [-2.5, -1, fr, 7 - crouch],
-     [3.5, -2, br, 6.5], [8, -2, bl, 6.5]].forEach(([hx, hy, sw, fy]) => {
-      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + sw, fy); ctx.stroke();
+    // ── legs: short stubs (fennec fox legs barely show) ──────────────────
+    const crouch = drinkT * 3;
+    ctx.strokeStyle = sand; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+    [[-7, 2, -7 + fl, 8 - crouch], [-2, 2, -2 + fr, 8 - crouch],
+     [4, 1, 4 + br, 7], [8, 1, 8 + bl, 7]].forEach(([hpx, hpy, fx, fy]) => {
+      ctx.beginPath(); ctx.moveTo(hpx, hpy); ctx.lineTo(fx, fy); ctx.stroke();
     });
-    ctx.fillStyle = shadow;
-    [[-7.5, fl, 7 - crouch], [-2.5, fr, 7 - crouch],
-     [3.5, br, 6.5], [8, bl, 6.5]].forEach(([hx, sw, fy]) => {
-      ctx.beginPath(); ctx.ellipse(hx + sw, fy, 2.8, 1.6, 0, 0, TAU); ctx.fill();
+    // tiny paws
+    ctx.fillStyle = light;
+    [[-7 + fl, 8 - crouch], [-2 + fr, 8 - crouch], [4 + br, 7], [8 + bl, 7]].forEach(([px, py]) => {
+      ctx.beginPath(); ctx.ellipse(px, py, 2.5, 1.5, 0, 0, TAU); ctx.fill();
     });
 
-    // Head — dips down to drink
-    const headX = -14 - drinkT * 3;
-    const headY = -13 + drinkT * 9;
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.arc(headX, headY, 7, 0, TAU); ctx.fill();
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(headX - 5, headY + 1, 5, 3.2, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(headX - 4.5, headY + 2.5, 3.5, 2, 0, 0, TAU); ctx.fill();
+    // ── head: large round cranium ──────────────────────────────────────────
+    const hx = -14 - drinkT * 3;
+    const hy = -16 + drinkT * 10;
 
-    // Giant ears (fennec fox signature)
-    ctx.fillStyle = fur;
-    ctx.save(); ctx.translate(headX - 3, headY - 5);
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-8, -28); ctx.lineTo(5, -1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(210,140,140,${0.85 * d})`;
-    ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(-6, -24); ctx.lineTo(3.5, -2); ctx.closePath(); ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = fur;
-    ctx.save(); ctx.translate(headX + 3, headY - 5);
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(6, -27); ctx.lineTo(8, -2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(210,140,140,${0.85 * d})`;
-    ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(5, -23); ctx.lineTo(6.5, -2); ctx.closePath(); ctx.fill();
-    ctx.restore();
+    // neck connection
+    ctx.fillStyle = sand;
+    ctx.beginPath();
+    ctx.moveTo(-8, -10); ctx.quadraticCurveTo(hx + 8, hy + 6, hx + 6, hy + 2);
+    ctx.quadraticCurveTo(hx + 10, hy + 4, -6, -8); ctx.fill();
 
-    // Nose, eye
+    // cranium
+    ctx.fillStyle = sand;
+    ctx.beginPath(); ctx.arc(hx, hy, 9, 0, TAU); ctx.fill();
+    // forehead slightly darker
+    ctx.fillStyle = dorsal;
+    ctx.beginPath(); ctx.ellipse(hx, hy - 4, 6, 4, 0, 0, TAU); ctx.fill();
+
+    // ── EARS: giant bat-like curved ears (the defining feature) ────────────
+    // Right ear (drawn first — slightly behind left)
+    ctx.fillStyle = sand;
+    ctx.beginPath();
+    ctx.moveTo(hx + 2, hy - 7);
+    ctx.bezierCurveTo(hx + 8, hy - 16, hx + 12, hy - 32, hx + 7, hy - 38);
+    ctx.bezierCurveTo(hx + 3, hy - 43, hx - 3, hy - 38, hx - 3, hy - 28);
+    ctx.bezierCurveTo(hx - 2, hy - 17, hx - 1, hy - 8, hx, hy - 7);
+    ctx.closePath(); ctx.fill();
+    // Right ear inner
+    ctx.fillStyle = earIn;
+    ctx.beginPath();
+    ctx.moveTo(hx + 2, hy - 10);
+    ctx.bezierCurveTo(hx + 6, hy - 17, hx + 9, hy - 30, hx + 5, hy - 35);
+    ctx.bezierCurveTo(hx + 2, hy - 39, hx - 1, hy - 35, hx - 1, hy - 27);
+    ctx.bezierCurveTo(hx - 1, hy - 18, hx, hy - 10, hx + 1, hy - 10);
+    ctx.closePath(); ctx.fill();
+
+    // Left ear (in front, angles left)
+    ctx.fillStyle = sand;
+    ctx.beginPath();
+    ctx.moveTo(hx - 4, hy - 7);
+    ctx.bezierCurveTo(hx - 12, hy - 16, hx - 16, hy - 31, hx - 11, hy - 38);
+    ctx.bezierCurveTo(hx - 7, hy - 44, hx + 1, hy - 40, hx + 2, hy - 30);
+    ctx.bezierCurveTo(hx + 3, hy - 18, hx + 2, hy - 8, hx + 2, hy - 7);
+    ctx.closePath(); ctx.fill();
+    // Left ear inner pink
+    ctx.fillStyle = earIn;
+    ctx.beginPath();
+    ctx.moveTo(hx - 3, hy - 10);
+    ctx.bezierCurveTo(hx - 9, hy - 18, hx - 12, hy - 30, hx - 8, hy - 36);
+    ctx.bezierCurveTo(hx - 5, hy - 41, hx, hy - 37, hx, hy - 28);
+    ctx.bezierCurveTo(hx + 1, hy - 19, hx + 1, hy - 10, hx, hy - 10);
+    ctx.closePath(); ctx.fill();
+
+    // ── muzzle: slightly pointed, cream ────────────────────────────────────
+    ctx.fillStyle = light;
+    ctx.beginPath(); ctx.ellipse(hx - 7, hy + 1.5, 6, 4, -0.1, 0, TAU); ctx.fill();
+    // darker muzzle top band
+    ctx.fillStyle = dorsal;
+    ctx.beginPath(); ctx.ellipse(hx - 5, hy - 0.5, 4.5, 2, -0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = light;
+    ctx.beginPath(); ctx.ellipse(hx - 5.5, hy + 0.2, 3, 1.5, -0.1, 0, TAU); ctx.fill();
+
+    // nose: small dark oval button
     ctx.fillStyle = dark;
-    ctx.beginPath(); ctx.ellipse(headX - 9, headY + 1.5, 1.7, 1.3, 0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = rgb([42, 28, 10].map((c) => c * d));
-    ctx.beginPath(); ctx.ellipse(headX - 1, headY - 1.5, 2.4, 2.1, 0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath(); ctx.arc(headX + 0.3, headY - 2.5, 0.75, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx - 12, hy + 1, 1.8, 1.4, 0.1, 0, TAU); ctx.fill();
+
+    // ── eye: large, dark amber-brown with prominent shine ──────────────────
+    ctx.fillStyle = rgb([35, 20, 8].map((c) => c * d));
+    ctx.beginPath(); ctx.ellipse(hx - 2, hy - 3, 3.2, 2.8, 0.1, 0, TAU); ctx.fill();
+    // subtle iris ring
+    ctx.strokeStyle = rgb([80, 50, 15].map((c) => c * d)); ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.ellipse(hx - 2, hy - 3, 3.2, 2.8, 0.1, 0, TAU); ctx.stroke();
+    // main shine dot
+    ctx.fillStyle = `rgba(255,255,255,${0.88 * d})`;
+    ctx.beginPath(); ctx.arc(hx - 0.6, hy - 4.5, 1.1, 0, TAU); ctx.fill();
+    // secondary smaller shine
+    ctx.fillStyle = `rgba(255,255,255,${0.45 * d})`;
+    ctx.beginPath(); ctx.arc(hx - 3.8, hy - 1.8, 0.6, 0, TAU); ctx.fill();
+
+    // eyelid crease (subtle)
+    ctx.strokeStyle = dorsal; ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.arc(hx - 2, hy - 3, 3.2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
 
     ctx.restore();
   }
