@@ -118,20 +118,41 @@ export function createDesert(canvas) {
     }
   }
 
+  // ── mountains ────────────────────────────────────────────────────────────
+
+  function drawMountains(sky) {
+    const d = 0.4 + sky.day * 0.6;
+    // Far mountains — cool purple-brown haze
+    ctx.fillStyle = rgb([168, 140, 118].map((c) => c * d * 0.82));
+    ctx.beginPath(); ctx.moveTo(0, H * 0.58); ctx.lineTo(0, H * 0.42);
+    const mpts = [0.06,0.14,0.22,0.30,0.38,0.46,0.54,0.62,0.70,0.78,0.86,0.94,1.0];
+    const mh   = [0.44,0.36,0.40,0.33,0.38,0.35,0.32,0.39,0.34,0.41,0.37,0.42,0.44];
+    mpts.forEach((x, i) => ctx.lineTo(W * x, H * mh[i]));
+    ctx.lineTo(W, H * 0.58); ctx.closePath(); ctx.fill();
+    // Nearer rocky ridge — warmer tone
+    ctx.fillStyle = rgb([192, 158, 118].map((c) => c * d * 0.88));
+    ctx.beginPath(); ctx.moveTo(0, H * 0.62); ctx.lineTo(0, H * 0.50);
+    const rpts = [0.08,0.18,0.28,0.38,0.50,0.62,0.72,0.82,0.92,1.0];
+    const rh   = [0.52,0.46,0.50,0.47,0.44,0.49,0.47,0.52,0.48,0.52];
+    rpts.forEach((x, i) => ctx.lineTo(W * x, H * rh[i]));
+    ctx.lineTo(W, H * 0.62); ctx.closePath(); ctx.fill();
+  }
+
   // ── dunes ────────────────────────────────────────────────────────────────
 
   function drawDunes(sky, time) {
     const d = 0.4 + sky.day * 0.6;
+    drawMountains(sky);
     const layers = [
-      { y: H * 0.5,  amp: 26, col: [214, 180, 132] },
-      { y: H * 0.62, amp: 34, col: [202, 166, 116] },
-      { y: H * 0.74, amp: 30, col: [188, 150, 100] },
+      { y: H * 0.52, amp: 22, col: [228, 198, 152] },
+      { y: H * 0.63, amp: 30, col: [218, 182, 130] },
+      { y: H * 0.74, amp: 26, col: [205, 168, 112] },
     ];
     layers.forEach((L, i) => {
       ctx.fillStyle = rgb(L.col.map((c) => c * d));
       ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, L.y);
       for (let x = 0; x <= W; x += 12)
-        ctx.lineTo(x, L.y + Math.sin(x * 0.006 + i * 1.7) * L.amp + Math.sin(x * 0.02 + i) * 6);
+        ctx.lineTo(x, L.y + Math.sin(x * 0.006 + i * 1.7) * L.amp + Math.sin(x * 0.02 + i) * 5);
       ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
     });
     return H * 0.78;
@@ -139,32 +160,72 @@ export function createDesert(canvas) {
 
   // ── oasis pool ───────────────────────────────────────────────────────────
 
-  function drawOasis(groundY, sky, time) {
-    const cx = W * 0.5, cy = groundY + 8;
-    const maxR = Math.min(W * 0.26, 200);
-    const r = maxR * (0.18 + fill * 0.82);
-    const ry = r * 0.34;
-    const d = 0.4 + sky.day * 0.6;
+  function poolPath(cx, cy, r, ry) {
+    // Slightly irregular, organic pool shape using many bezier-smoothed points
+    ctx.beginPath();
+    const pts = 24;
+    for (let i = 0; i <= pts; i++) {
+      const a = (i / pts) * TAU;
+      // Gentle wobble for natural shoreline
+      const wobble = 1 + 0.07 * Math.sin(a * 3 + 0.4) + 0.04 * Math.sin(a * 7);
+      const px = cx + Math.cos(a) * r * wobble;
+      const py = cy + Math.sin(a) * ry * wobble;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  }
 
-    ctx.fillStyle = rgb([150, 120, 80].map((c) => c * d));
-    ctx.beginPath(); ctx.ellipse(cx, cy, r + 16, ry + 7, 0, 0, TAU); ctx.fill();
+  function drawOasis(groundY, sky, time) {
+    const cx = W * 0.5, cy = groundY + 16;
+    // Much larger pool — dominant feature of the scene
+    const maxR = Math.min(W * 0.40, 300);
+    const r  = maxR * (0.28 + fill * 0.72);
+    const ry = r * 0.44;
+    const d  = 0.4 + sky.day * 0.6;
+
+    // Sandy beach margin around pool
+    ctx.fillStyle = rgb([215, 188, 148].map((c) => c * d));
+    poolPath(cx, cy, r + 22, ry + 12);
+    ctx.fill();
 
     if (fill <= 0.02) return { cx, cy, r, ry };
 
+    // Water fill — vivid turquoise like reference
     const wg = ctx.createLinearGradient(0, cy - ry, 0, cy + ry);
-    wg.addColorStop(0, `rgb(${96 * d},${198 * d},${214 * d})`);
-    wg.addColorStop(1, `rgb(${30 * d},${110 * d},${158 * d})`);
+    wg.addColorStop(0,   `rgb(${(80 * d) | 0},${(210 * d) | 0},${(228 * d) | 0})`);
+    wg.addColorStop(0.5, `rgb(${(48 * d) | 0},${(172 * d) | 0},${(205 * d) | 0})`);
+    wg.addColorStop(1,   `rgb(${(28 * d) | 0},${(118 * d) | 0},${(165 * d) | 0})`);
     ctx.fillStyle = wg;
-    ctx.beginPath(); ctx.ellipse(cx, cy, r, ry, 0, 0, TAU); ctx.fill();
+    poolPath(cx, cy, r, ry);
+    ctx.fill();
 
+    // Palm trunk reflections inside water
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(cx, cy, r, ry, 0, 0, TAU); ctx.clip();
-    ctx.strokeStyle = `rgba(255,255,255,${0.18 * d})`; ctx.lineWidth = 1.2;
-    for (let i = 0; i < 4; i++) {
-      const yy = cy - ry + (i + 0.5) * (ry * 2 / 4);
+    poolPath(cx, cy, r, ry);
+    ctx.clip();
+    const pr = rng(5);
+    const palmCount = 2 + Math.floor(fill * 6);
+    for (let i = 0; i < palmCount; i++) {
+      const side = i % 2 ? 1 : -1;
+      const px = cx + side * (r * 0.35 + pr() * r * 0.5);
+      const refH = 30 + pr() * 55;
+      const g = ctx.createLinearGradient(px, cy, px, cy + refH * 0.7);
+      g.addColorStop(0, `rgba(30,90,60,${0.28 * d})`);
+      g.addColorStop(1, `rgba(30,90,60,0)`);
+      ctx.fillStyle = g;
       ctx.beginPath();
-      for (let x = cx - r; x <= cx + r; x += 8) {
-        const off = Math.sin(x * 0.06 + time * 0.003 + i) * 2;
+      ctx.moveTo(px - 2.5, cy);
+      ctx.quadraticCurveTo(px - 1, cy + refH * 0.5, px + (pr() - 0.5) * 6, cy + refH * 0.7);
+      ctx.quadraticCurveTo(px + 1, cy + refH * 0.5, px + 2.5, cy);
+      ctx.fill();
+    }
+    // Sky shimmer ripples
+    ctx.strokeStyle = `rgba(255,255,255,${0.14 * d})`; ctx.lineWidth = 1.1;
+    for (let i = 0; i < 5; i++) {
+      const yy = cy - ry * 0.6 + i * (ry * 1.2 / 4);
+      ctx.beginPath();
+      for (let x = cx - r; x <= cx + r; x += 7) {
+        const off = Math.sin(x * 0.07 + time * 0.003 + i * 0.8) * 2.5;
         x === cx - r ? ctx.moveTo(x, yy + off) : ctx.lineTo(x, yy + off);
       }
       ctx.stroke();
@@ -175,46 +236,164 @@ export function createDesert(canvas) {
 
   // ── vegetation ───────────────────────────────────────────────────────────
 
+  // Improved palm: thicker trunk with ring marks, denser fronds
   function drawPalm(x, baseY, hgt, sky, sway) {
     const d = 0.4 + sky.day * 0.6;
-    ctx.strokeStyle = rgb([110, 78, 46].map((c) => c * d));
-    ctx.lineWidth = Math.max(3, hgt * 0.05); ctx.lineCap = 'round';
+    const tw = Math.max(4, hgt * 0.055);
+    const tx = x + sway * hgt * 0.14, ty = baseY - hgt;
+    // Trunk
+    ctx.strokeStyle = rgb([118, 82, 46].map((c) => c * d));
+    ctx.lineWidth = tw; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, baseY);
-    const tx = x + sway * hgt * 0.12, ty = baseY - hgt;
-    ctx.quadraticCurveTo(x + sway * hgt * 0.04, baseY - hgt * 0.5, tx, ty); ctx.stroke();
-    ctx.strokeStyle = rgb([70, 140, 70].map((c) => c * d));
-    ctx.lineWidth = Math.max(2, hgt * 0.03);
-    for (let i = 0; i < 7; i++) {
-      const a = -Math.PI / 2 + (i - 3) * 0.5 + sway * 0.1;
+    ctx.quadraticCurveTo(x + sway * hgt * 0.05, baseY - hgt * 0.5, tx, ty); ctx.stroke();
+    // Trunk ring marks
+    ctx.strokeStyle = rgb([92, 62, 32].map((c) => c * d));
+    ctx.lineWidth = 0.8;
+    for (let i = 1; i < 7; i++) {
+      const t = i / 7;
+      const rx = lerp(x, tx, t), ry2 = lerp(baseY, ty, t);
+      ctx.beginPath(); ctx.moveTo(rx - tw * 0.6, ry2); ctx.lineTo(rx + tw * 0.6, ry2); ctx.stroke();
+    }
+    // Fronds — 9 longer, drooping
+    for (let i = 0; i < 9; i++) {
+      const a = -Math.PI / 2 + (i - 4) * 0.42 + sway * 0.12;
+      const len = hgt * (0.45 + Math.abs(Math.cos(a)) * 0.08);
+      const droop = hgt * 0.12;
+      const frondCol = i === 4 ? [55, 135, 58] : (i < 2 || i > 6 ? [42, 108, 45] : [62, 148, 55]);
+      ctx.strokeStyle = rgb(frondCol.map((c) => c * d));
+      ctx.lineWidth = Math.max(1.8, tw * 0.38);
+      ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(tx, ty);
-      ctx.quadraticCurveTo(tx + Math.cos(a) * hgt * 0.3, ty + Math.sin(a) * hgt * 0.3 - 6,
-        tx + Math.cos(a) * hgt * 0.5, ty + Math.sin(a) * hgt * 0.5 + 6); ctx.stroke();
+      ctx.quadraticCurveTo(
+        tx + Math.cos(a) * len * 0.5, ty + Math.sin(a) * len * 0.5 + droop * 0.4,
+        tx + Math.cos(a) * len, ty + Math.sin(a) * len + droop
+      ); ctx.stroke();
+    }
+  }
+
+  // Rounded desert shrub / bush
+  function drawShrub(x, y, size, sky) {
+    const d = 0.4 + sky.day * 0.6;
+    const cols = [[78, 125, 58], [68, 112, 50], [90, 138, 62]];
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      const col = cols[i % cols.length];
+      ctx.fillStyle = rgb(col.map((c) => c * d));
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(a) * size * 0.48, y + Math.sin(a) * size * 0.28, size * 0.42, 0, TAU);
+      ctx.fill();
+    }
+    ctx.fillStyle = rgb([88, 138, 65].map((c) => c * d));
+    ctx.beginPath(); ctx.arc(x, y - size * 0.1, size * 0.42, 0, TAU); ctx.fill();
+  }
+
+  // Desert flowers (like second reference image — warm pink/red)
+  function drawFlowers(x, y, sky, seed) {
+    const d = 0.4 + sky.day * 0.6;
+    const fr = rng(seed);
+    // Stems
+    ctx.strokeStyle = rgb([72, 108, 52].map((c) => c * d));
+    ctx.lineWidth = 1.1; ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const sx = x + (fr() - 0.5) * 20;
+      const sh = 14 + fr() * 18;
+      ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx + (fr() - 0.5) * 6, y - sh); ctx.stroke();
+      // Flower head
+      ctx.fillStyle = fr() > 0.5
+        ? rgb([210, 85, 75].map((c) => c * d))   // red
+        : rgb([195, 105, 155].map((c) => c * d)); // pink
+      ctx.beginPath(); ctx.arc(sx + (fr() - 0.5) * 4, y - sh, 3 + fr() * 3, 0, TAU); ctx.fill();
+    }
+    // Base leaves
+    ctx.strokeStyle = rgb([78, 120, 55].map((c) => c * d));
+    ctx.lineWidth = 1.8;
+    for (let i = 0; i < 4; i++) {
+      const a = -Math.PI * 0.6 + i * 0.4;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * 10, y + Math.sin(a) * 6); ctx.stroke();
+    }
+  }
+
+  // Reeds / water grasses at pool edge
+  function drawReeds(x, baseY, sky, seed, time) {
+    const d = 0.4 + sky.day * 0.6;
+    const rr = rng(seed);
+    ctx.strokeStyle = rgb([95, 148, 68].map((c) => c * d));
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const rx = x + (rr() - 0.5) * 14;
+      const rh = 16 + rr() * 20;
+      const sw = Math.sin(time * 0.001 + rx * 0.1) * 2;
+      ctx.lineWidth = 1.2 + rr() * 0.8;
+      ctx.beginPath(); ctx.moveTo(rx, baseY); ctx.lineTo(rx + sw, baseY - rh); ctx.stroke();
+      // Seed head
+      ctx.fillStyle = rgb([168, 128, 62].map((c) => c * d));
+      ctx.beginPath(); ctx.ellipse(rx + sw, baseY - rh, 1.8, 4, 0.1, 0, TAU); ctx.fill();
     }
   }
 
   function drawLife(pool, groundY, sky, time) {
     const d = 0.4 + sky.day * 0.6;
-    const sway = Math.sin(time * 0.0009) * 0.6;
-    const { cx, r } = pool;
-    const tufts = clamp(Math.round(litres * 2), 0, 16);
-    ctx.strokeStyle = rgb([90, 150, 78].map((c) => c * d));
-    ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-    const gr = rng(21);
-    for (let i = 0; i < tufts; i++) {
-      const side = i % 2 ? 1 : -1;
-      const bx = cx + side * (r + 10 + gr() * 40);
-      const by = groundY + 6 + gr() * 8;
-      for (let b = 0; b < 3; b++) {
-        const a = -Math.PI / 2 + (b - 1) * 0.35 + sway * 0.2;
-        ctx.beginPath(); ctx.moveTo(bx + b, by);
-        ctx.lineTo(bx + Math.cos(a) * 9, by + Math.sin(a) * 9); ctx.stroke();
+    const sway = Math.sin(time * 0.0009) * 0.55;
+    const { cx, cy, r, ry } = pool;
+
+    // ── large shrubs behind pool (drawn before palms for depth) ───────────
+    const sbr = rng(42);
+    const shrubArc = 10;
+    for (let i = 0; i < shrubArc; i++) {
+      const a = Math.PI + (i / (shrubArc - 1)) * Math.PI; // arc behind pool
+      const dist = r * (0.95 + sbr() * 0.45);
+      const sx = cx + Math.cos(a) * dist;
+      const sy = groundY + sbr() * 12;
+      if (sx > 5 && sx < W - 5) drawShrub(sx, sy, 16 + sbr() * 18, sky);
+    }
+
+    // ── palm trees — cluster behind & around pool ──────────────────────────
+    const palmCount = 3 + Math.floor(fill * 9); // 3 always, up to 12
+    const pr = rng(5);
+    for (let i = 0; i < palmCount; i++) {
+      // Spread palms in a wide arc around the pool
+      const a = (i / palmCount) * TAU + 0.3;
+      const distFrac = 0.85 + pr() * 0.55;
+      const px = cx + Math.cos(a) * r * distFrac * 1.1;
+      const py = groundY + 4 + pr() * 8;
+      const hgt = 65 + pr() * 95; // taller trees
+      const lean = (pr() - 0.5) * 0.35 + Math.cos(a) * 0.2;
+      if (px > -20 && px < W + 20) {
+        drawPalm(px, py, hgt, sky, sway * lean);
       }
     }
-    const palms = Math.floor(fill * 4);
-    const pr = rng(5);
-    for (let i = 0; i < palms; i++) {
+
+    // ── reeds at pool edge ─────────────────────────────────────────────────
+    const reedCount = 6 + Math.floor(litres * 1.5);
+    const rr2 = rng(88);
+    for (let i = 0; i < Math.min(reedCount, 16); i++) {
+      const a = (i / 16) * TAU;
+      const ex = cx + Math.cos(a) * (r + 4 + rr2() * 10);
+      const ey = cy + Math.sin(a) * (ry + 4 + rr2() * 6);
+      if (ex > 0 && ex < W) drawReeds(ex, ey, sky, 88 + i, time);
+    }
+
+    // ── foreground shrubs on sand banks ───────────────────────────────────
+    const fgr = rng(77);
+    const fgCount = 4 + Math.floor(litres * 1.2);
+    for (let i = 0; i < Math.min(fgCount, 14); i++) {
       const side = i % 2 ? 1 : -1;
-      drawPalm(cx + side * (r + 30 + pr() * 50), groundY + 6, 70 + pr() * 50, sky, sway * side);
+      const dist = r + 18 + fgr() * 55;
+      const sx = cx + side * dist;
+      const sy = groundY + 8 + fgr() * 14;
+      if (sx > 8 && sx < W - 8) drawShrub(sx, sy, 10 + fgr() * 16, sky);
+    }
+
+    // ── desert flowers at pool margins ────────────────────────────────────
+    if (litres >= 1) {
+      const flr = rng(55);
+      const flCount = Math.floor(litres * 1.8);
+      for (let i = 0; i < Math.min(flCount, 10); i++) {
+        const side = i % 2 ? 1 : -1;
+        const fx = cx + side * (r * 0.6 + flr() * r * 0.55);
+        const fy = groundY + 6 + flr() * 18;
+        if (fx > 10 && fx < W - 10) drawFlowers(fx, fy, sky, 55 + i * 7, time);
+      }
     }
   }
 
