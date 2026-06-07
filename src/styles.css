@@ -194,6 +194,49 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 .biome-tab.on { background: rgba(255,255,255,.92); color: #20242c; }
 .b-emoji { font-size: 17px; }
 
+/* ---- jungle sleep check-in ---- */
+.sleep-hours {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+}
+.sleep-hours-val {
+  font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600;
+  color: #1f3b2c; min-width: 46px; text-align: right;
+}
+.sleep-hours input { flex: 1; accent-color: #4db87a; }
+.sleep-hours-label { font-size: 11.5px; color: #8a8d96; white-space: nowrap; }
+.sleep-quality { display: flex; gap: 10px; margin-bottom: 18px; }
+.sqbtn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 12px 6px; border-radius: 16px; cursor: pointer;
+  background: #f0f4f0; border: 2px solid transparent;
+  transition: transform .12s ease, border-color .12s ease;
+  font-family: inherit;
+}
+.sqbtn:hover { transform: translateY(-2px); }
+.sqbtn.on { border-color: #4db87a; background: #d8f0e4; }
+.sqico { font-size: 24px; }
+.sqlbl { font-size: 11.5px; font-weight: 700; color: #4c4f57; }
+.grow.jungle { background: #2d5a3d; color: #b8f0c8; }
+
+/* ---- sound bar (jungle) ---- */
+.sound-bar {
+  position: absolute; left: 50%; bottom: 138px; transform: translateX(-50%);
+  display: flex; gap: 5px; z-index: 3;
+  background: rgba(8, 18, 10, 0.72); backdrop-filter: blur(10px);
+  padding: 5px; border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.4);
+}
+.sbtn {
+  border: none; background: transparent; cursor: pointer;
+  color: rgba(180,255,180,.7); font-family: 'Nunito', sans-serif;
+  font-weight: 700; font-size: 12px;
+  padding: 7px 13px; border-radius: 999px;
+  transition: background .15s ease, color .15s ease;
+  white-space: nowrap;
+}
+.sbtn:hover { color: #c8ffc8; }
+.sbtn.on { background: rgba(60,180,90,.88); color: #fff; }
+
 @keyframes slideup { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 

@@ -15,11 +15,17 @@ import {
   subscribeDesert, getLogs, addWater, resetDesert,
   oasisFill, litresToday, goalMet, wateredToday, hydrationStreak, animalsPresent, GOAL,
 } from './desert-store.js';
+import {
+  subscribeJungle, getSleepLogs, addSleep, resetJungle,
+  sleptToday, sleepHoursToday, sleepStreak, bioLevel, BIO_THRESHOLDS,
+} from './jungle-store.js';
+import { SOUND_OPTIONS, createSoundEngine } from './jungle-sounds.js';
 import { BIOMES, subscribeBiome, getBiome, setBiome } from './biome-store.js';
 import { subscribeClock, getClockMode, cycleClock, CLOCK_LABEL, CLOCK_NAME } from './clock.js';
 import { createWorld } from './world.js';
 import { createOcean } from './ocean.js';
 import { createDesert } from './desert.js';
+import { createJungle } from './jungle.js';
 
 const html = htm.bind(h);
 
@@ -27,6 +33,7 @@ const useCheckins = () => useSyncExternalStore(subscribe, getCheckins);
 const useSteps = () => useSyncExternalStore(subscribe, getSteps);
 const useLetters = () => useSyncExternalStore(subscribeOcean, getLetters);
 const useWater = () => useSyncExternalStore(subscribeDesert, getLogs);
+const useSleep = () => useSyncExternalStore(subscribeJungle, getSleepLogs);
 const useBiome = () => useSyncExternalStore(subscribeBiome, getBiome);
 const useClock = () => useSyncExternalStore(subscribeClock, getClockMode);
 
@@ -94,6 +101,26 @@ function DesertWorld() {
 
   useEffect(() => {
     world.current?.setData({ fill: oasisFill(), litres: litresToday(), animals: animalsPresent() });
+  }, [logs]);
+
+  return html`<canvas ref=${ref} class="world"></canvas>`;
+}
+
+// Singleton sound engine — lives outside React so it survives re-renders.
+const soundEngine = createSoundEngine();
+
+function JungleWorld() {
+  const ref = useRef(null);
+  const world = useRef(null);
+  const logs = useSleep();
+
+  useEffect(() => {
+    world.current = createJungle(ref.current);
+    return () => { world.current?.destroy(); soundEngine.stop(); };
+  }, []);
+
+  useEffect(() => {
+    world.current?.setData({ bio: bioLevel(), hours: sleepHoursToday() });
   }, [logs]);
 
   return html`<canvas ref=${ref} class="world"></canvas>`;
@@ -230,6 +257,47 @@ function DesertCheckIn({ onDone }) {
     </div>`;
 }
 
+function JungleCheckIn({ onDone }) {
+  const [hours, setHours] = useState(7);
+  const [quality, setQuality] = useState(null);
+
+  function submit() {
+    if (!quality) return;
+    addSleep(hours, quality);
+    onDone();
+  }
+
+  const qualities = [
+    { v: 1, emoji: '😴', label: 'Poor' },
+    { v: 2, emoji: '😑', label: 'Okay' },
+    { v: 3, emoji: '😊', label: 'Great' },
+  ];
+
+  return html`
+    <div class="sheet">
+      <h2>How did you sleep?</h2>
+      <p class="sub">Your jungle glows brighter with rest. Rare creatures emerge with consistent good sleep.</p>
+      <div class="sleep-hours">
+        <span class="sleep-hours-val">${hours}h</span>
+        <input type="range" min="0" max="12" step="0.5"
+          value=${hours} onInput=${e => setHours(+e.target.value)} />
+        <span class="sleep-hours-label">hours slept</span>
+      </div>
+      <div class="sleep-quality">
+        ${qualities.map(q => html`
+          <button key=${q.v}
+            class=${'sqbtn' + (quality === q.v ? ' on' : '')}
+            onClick=${() => setQuality(q.v)}>
+            <span class="sqico">${q.emoji}</span>
+            <span class="sqlbl">${q.label}</span>
+          </button>`)}
+      </div>
+      <button class=${'grow jungle' + (quality ? '' : ' off')} onClick=${submit}>
+        Enter the jungle →
+      </button>
+    </div>`;
+}
+
 // ---- biome switcher --------------------------------------------------------
 
 function Switcher({ active }) {
@@ -281,35 +349,73 @@ const DESERT = {
   resetMsg: 'Clear the whole hydration log? It cannot be undone.',
 };
 
-const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT };
+const JUNGLE = {
+  World: JungleWorld,
+  CheckIn: JungleCheckIn,
+  logo: '🌴',
+  title: 'Your Jungle',
+  count: (l) => `${l.length} nights · ${sleepHoursToday().toFixed(1)}h tonight`,
+  empty: 'Log your first night',
+  again: (today) => (today ? 'Log another' : 'Log tonight\'s sleep'),
+  resetMsg: 'Clear all sleep logs? The jungle goes dark.',
+};
+
+const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE };
 
 // ---- app -------------------------------------------------------------------
+
+function SoundBar() {
+  const [active, setActive] = useState('off');
+  function pick(id) {
+    setActive(id);
+    soundEngine.play(id);
+  }
+  return html`
+    <div class="sound-bar">
+      ${SOUND_OPTIONS.map(s => html`
+        <button key=${s.id}
+          class=${'sbtn' + (active === s.id ? ' on' : '')}
+          onClick=${() => pick(s.id)}>
+          ${s.label}
+        </button>`)}
+    </div>`;
+}
 
 function App() {
   const biome = useBiome();
   const checkins = useCheckins();
   const letters = useLetters();
   const logs = useWater();
+  const sleepLogs = useSleep();
   const [open, setOpen] = useState(false);
 
   const clock = useClock();
   const cfg = CONFIGS[biome];
-  const items = biome === 'forest' ? checkins : biome === 'ocean' ? letters : logs;
+  const items = biome === 'forest' ? checkins
+    : biome === 'ocean' ? letters
+    : biome === 'desert' ? logs
+    : sleepLogs;
   const streak = biome === 'forest' ? checkinStreak()
-    : biome === 'ocean' ? letterStreak() : hydrationStreak();
+    : biome === 'ocean' ? letterStreak()
+    : biome === 'desert' ? hydrationStreak()
+    : sleepStreak();
   const today = biome === 'forest' ? checkedInToday()
-    : biome === 'ocean' ? bottledToday() : wateredToday();
+    : biome === 'ocean' ? bottledToday()
+    : biome === 'desert' ? wateredToday()
+    : sleptToday();
 
   const dom = biome === 'forest' ? dominantEmotion() : null;
   const moth = biome === 'forest' && mothAwakened();
   const whale = biome === 'ocean' && whaleAwakened();
   const animals = biome === 'desert' ? animalsPresent() : null;
+  const bio = biome === 'jungle' ? bioLevel() : 0;
 
   function reset() {
     if (!confirm(cfg.resetMsg)) return;
     if (biome === 'forest') resetWorld();
     else if (biome === 'ocean') resetOcean();
-    else resetDesert();
+    else if (biome === 'desert') resetDesert();
+    else resetJungle();
   }
 
   return html`
@@ -341,7 +447,12 @@ function App() {
       ${animals && !animals.owl && animals.coyote && html`<div class="discovery">🐺 A coyote crept in at dusk — 4L reached. Halfway to a full oasis.</div>`}
       ${animals && !animals.coyote && animals.snake && html`<div class="discovery">🐍 A rattlesnake coiled up near the pool — 3L down today.</div>`}
       ${animals && !animals.snake && animals.fox && html`<div class="discovery">🦊 A fennec fox padded out to drink — keep going to attract more life.</div>`}
+      ${biome === 'jungle' && bio >= BIO_THRESHOLDS.jaguar && html`<div class="discovery">🐆 A phantom jaguar steps from the dark — its luminous markings pulse with your perfect sleep rhythm.</div>`}
+      ${biome === 'jungle' && bio >= BIO_THRESHOLDS.butterfly && bio < BIO_THRESHOLDS.jaguar && html`<div class="discovery">🦋 A glowing morpho butterfly drifts through — consistent good sleep lit the way.</div>`}
+      ${biome === 'jungle' && bio >= BIO_THRESHOLDS.frog && bio < BIO_THRESHOLDS.butterfly && html`<div class="discovery">🐸 A bioluminescent frog emerges from the undergrowth — your sleep is improving.</div>`}
+      ${biome === 'jungle' && bio >= BIO_THRESHOLDS.firefly && bio < BIO_THRESHOLDS.frog && html`<div class="discovery">✨ Fireflies drift through the dark — rest more to awaken deeper life.</div>`}
 
+      ${biome === 'jungle' && html`<${SoundBar} />`}
       <${Switcher} active=${biome} />
 
       <footer class="bottom">
