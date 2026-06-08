@@ -128,123 +128,194 @@ export function createJungle(canvas) {
     treeProfile(W * 0.5, W, H * 0.36, 8, 9);    ctx.fill();
   }
 
+  // Helper: draw a single tropical leaf from base point in given direction
+  function tropicalLeaf(bx, by, len, halfW, angle, fillCol, midribCol) {
+    const ex = bx + Math.cos(angle) * len;
+    const ey = by + Math.sin(angle) * len;
+    const mx = bx + Math.cos(angle) * len * 0.48;
+    const my = by + Math.sin(angle) * len * 0.48;
+    const px = Math.cos(angle + Math.PI / 2) * halfW;
+    const py = Math.sin(angle + Math.PI / 2) * halfW;
+    ctx.fillStyle = fillCol;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.bezierCurveTo(mx + px * 0.6, my + py * 0.6, mx + px, my + py, ex, ey);
+    ctx.bezierCurveTo(mx - px * 0.2, my - py * 0.2, bx + Math.cos(angle) * 8, by + Math.sin(angle) * 8, bx, by);
+    ctx.fill();
+    ctx.strokeStyle = midribCol; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
+    for (let v = 1; v <= 5; v++) {
+      const vt = v / 6;
+      const vx = lerp(bx, ex, vt), vy = lerp(by, ey, vt);
+      const spread = (1 - vt) * 0.85;
+      ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.moveTo(vx, vy);
+      ctx.lineTo(vx + px * spread, vy + py * spread); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(vx, vy);
+      ctx.lineTo(vx - px * spread * 0.7, vy - py * spread * 0.7); ctx.stroke();
+    }
+  }
+
+  // A ground-level fern frond: multiple leaflets along a central rachis
+  function fernFrond(bx, by, len, angle, col) {
+    const r = rng(bx * 7 | 0);
+    ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(bx, by);
+    const ex = bx + Math.cos(angle) * len, ey = by + Math.sin(angle) * len;
+    ctx.quadraticCurveTo(bx + Math.cos(angle - 0.15) * len * 0.5, by + Math.sin(angle - 0.15) * len * 0.5, ex, ey);
+    ctx.stroke();
+    const pairs = 7;
+    for (let i = 1; i <= pairs; i++) {
+      const ft = i / (pairs + 1);
+      const fx = lerp(bx, ex, ft), fy = lerp(by, ey, ft);
+      const flen = len * 0.22 * (1 - ft * 0.5);
+      const spread = 0.55;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(fx, fy);
+      ctx.lineTo(fx + Math.cos(angle + Math.PI * 0.5 - spread) * flen, fy + Math.sin(angle + Math.PI * 0.5 - spread) * flen); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(fx, fy);
+      ctx.lineTo(fx + Math.cos(angle - Math.PI * 0.5 + spread) * flen, fy + Math.sin(angle - Math.PI * 0.5 + spread) * flen); ctx.stroke();
+    }
+  }
+
   function drawGround() {
-    // Ground
     const g = ctx.createLinearGradient(0, H * 0.72, 0, H);
-    g.addColorStop(0, '#0b1509');
-    g.addColorStop(0.5, '#0e1a0b');
-    g.addColorStop(1, '#080e06');
+    g.addColorStop(0,   '#111f0d');
+    g.addColorStop(0.5, '#0e1a0a');
+    g.addColorStop(1,   '#090e06');
     ctx.fillStyle = g;
     ctx.fillRect(0, H * 0.72, W, H * 0.28);
 
-    // Gnarled root silhouettes — slightly visible against ground
-    ctx.strokeStyle = '#162210'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    // Moonlight patches — subtle silver pools on the ground
+    for (let i = 0; i < 4; i++) {
+      const mx = W * (0.15 + i * 0.23);
+      const my = H * (0.80 + (i % 2) * 0.06);
+      const mg = ctx.createRadialGradient(mx, my, 0, mx, my, W * 0.10);
+      mg.addColorStop(0, 'rgba(200,215,200,0.06)');
+      mg.addColorStop(1, 'rgba(200,215,200,0)');
+      ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
+    }
+
+    // Gnarled surface roots winding across floor
     const roots = rng(20);
     for (let i = 0; i < 10; i++) {
       const rx = roots() * W;
-      const ry = H * (0.73 + roots() * 0.12);
+      const ry = H * (0.74 + roots() * 0.10);
+      ctx.strokeStyle = `rgba(${28 + (i * 3)},${48 + (i * 3)},${20},0.9)`;
+      ctx.lineWidth = 3 + roots() * 3; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(rx, ry);
       ctx.bezierCurveTo(
-        rx + (roots() - 0.5) * 90, ry + 18,
-        rx + (roots() - 0.5) * 130, ry + 50,
-        rx + (roots() - 0.5) * 70, ry + 75
+        rx + (roots() - 0.5) * 100, ry + 14,
+        rx + (roots() - 0.5) * 140, ry + 44,
+        rx + (roots() - 0.5) * 80, ry + 70
       );
       ctx.stroke();
     }
 
-    // Ground-cover ferns — flat leaves at floor level
-    ctx.fillStyle = '#112010';
+    // Ground ferns spread across the floor
     const fr = rng(30);
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 22; i++) {
       const fx = fr() * W;
-      const fy = H * (0.75 + fr() * 0.10);
-      const fw = 28 + fr() * 55;
-      ctx.beginPath();
-      ctx.ellipse(fx, fy, fw, 9 + fr() * 8, (fr() - 0.5) * 0.9, 0, TAU);
-      ctx.fill();
+      const fy = H * (0.76 + fr() * 0.09);
+      const flen = 35 + fr() * 50;
+      const fangle = (fr() - 0.5) * Math.PI * 0.7 - Math.PI * 0.5;
+      fernFrond(fx, fy, flen, fangle, `rgba(24,48,20,${0.7 + fr() * 0.3})`);
     }
   }
 
-  // Visible tree trunks, hanging vines, large tropical leaves
   function drawMidground() {
-    // Tree trunks — four pillars at deterministic x positions
-    const trunkXs = [0.10, 0.36, 0.64, 0.90];
-    trunkXs.forEach((xf, i) => {
+    // Organic tree trunks with bark texture
+    const trunkDefs = [
+      { xf: 0.08, tw: 22, lean:  4 },
+      { xf: 0.35, tw: 28, lean: -3 },
+      { xf: 0.62, tw: 24, lean:  5 },
+      { xf: 0.91, tw: 20, lean: -4 },
+    ];
+    trunkDefs.forEach(({ xf, tw, lean }) => {
       const tx = W * xf;
-      const tw = 18 + i * 3;
+      const topX = tx + lean;
+      // Trunk outline — organic bezier instead of rectangle
       const tg = ctx.createLinearGradient(tx - tw, 0, tx + tw, 0);
-      tg.addColorStop(0, '#0a1609');
-      tg.addColorStop(0.45, '#162a12');
-      tg.addColorStop(1, '#0a1609');
+      tg.addColorStop(0,    '#0e1c0b');
+      tg.addColorStop(0.38, '#243d1e');
+      tg.addColorStop(0.65, '#1c3018');
+      tg.addColorStop(1,    '#0e1c0b');
       ctx.fillStyle = tg;
       ctx.beginPath();
-      ctx.roundRect(tx - tw / 2, H * 0.32, tw, H * 0.68, tw * 0.3);
-      ctx.fill();
-      // Root buttress flares
-      ctx.fillStyle = '#112010';
-      [[tx - tw * 0.9, H * 0.70, tx - tw * 2.2, H * 0.80],
-       [tx + tw * 0.9, H * 0.70, tx + tw * 2.2, H * 0.80]].forEach(([x1, y1, x2, y2]) => {
+      ctx.moveTo(tx - tw / 2, H);
+      ctx.bezierCurveTo(tx - tw / 2 + lean * 0.3, H * 0.80, topX - tw / 2 - 2, H * 0.45, topX - tw / 2, H * 0.28);
+      ctx.lineTo(topX + tw / 2, H * 0.28);
+      ctx.bezierCurveTo(topX + tw / 2 + 2, H * 0.45, tx + tw / 2 - lean * 0.3, H * 0.80, tx + tw / 2, H);
+      ctx.closePath(); ctx.fill();
+      // Bark horizontal lines
+      ctx.strokeStyle = '#0b1609'; ctx.lineCap = 'round';
+      for (let b = 0; b < 10; b++) {
+        const by2 = H * (0.32 + b * 0.07);
+        const bxt = lerp(tx, topX, (by2 - H) / (H * 0.28 - H));
+        ctx.lineWidth = 0.8 + (b % 3) * 0.4;
         ctx.beginPath();
-        ctx.moveTo(tx, y1); ctx.quadraticCurveTo(x1, (y1 + y2) / 2, x2, y2);
-        ctx.lineTo(tx, y2 + 4); ctx.closePath(); ctx.fill();
+        ctx.moveTo(bxt - tw / 2 + 2, by2);
+        ctx.quadraticCurveTo(bxt, by2 + 1.5, bxt + tw / 2 - 2, by2 - 0.5);
+        ctx.stroke();
+      }
+      // Moss patches on shadow side
+      ctx.fillStyle = 'rgba(20,42,18,0.6)';
+      for (let m = 0; m < 4; m++) {
+        const my = H * (0.45 + m * 0.08);
+        ctx.beginPath();
+        ctx.ellipse(tx - tw * 0.28, my, 4 + m * 1.5, 3, 0.3, 0, TAU);
+        ctx.fill();
+      }
+      // Root buttress flares spreading at ground
+      ctx.fillStyle = '#172b14';
+      [[-1.1, -2.5], [1.1, 2.5]].forEach(([dirX, dirY]) => {
+        ctx.beginPath();
+        ctx.moveTo(tx, H * 0.72);
+        ctx.quadraticCurveTo(tx + dirX * tw * 1.0, H * 0.78, tx + dirX * tw * 2.2, H * 0.82);
+        ctx.lineTo(tx + dirX * tw * 2.4, H * 0.85);
+        ctx.quadraticCurveTo(tx + dirX * tw * 1.2, H * 0.80, tx + dirX * tw * 0.3, H * 0.75);
+        ctx.closePath(); ctx.fill();
       });
     });
 
-    // Hanging vines dropping from canopy
-    ctx.strokeStyle = '#142212'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    // Hanging vines — thicker, more visible
     const vr = rng(88);
-    for (let i = 0; i < 10; i++) {
-      const vx = W * (0.06 + vr() * 0.88);
-      const vlen = H * (0.28 + vr() * 0.30);
-      const sway = (vr() - 0.5) * 30;
+    for (let i = 0; i < 12; i++) {
+      const vx = W * (0.05 + vr() * 0.90);
+      const vlen = H * (0.30 + vr() * 0.32);
+      const sway = (vr() - 0.5) * 45;
+      const vw = 1.2 + vr() * 2;
+      ctx.strokeStyle = `rgba(22,44,18,${0.7 + vr() * 0.3})`;
+      ctx.lineWidth = vw; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(vx, 0);
-      ctx.bezierCurveTo(vx + sway * 0.3, vlen * 0.35, vx + sway * 0.7, vlen * 0.65, vx + sway, vlen);
+      ctx.bezierCurveTo(vx + sway * 0.28, vlen * 0.32, vx + sway * 0.72, vlen * 0.68, vx + sway, vlen);
       ctx.stroke();
-      // Leaf node bumps along vine
-      ctx.fillStyle = '#172814';
-      for (let j = 0; j < 4; j++) {
-        const lt = 0.2 + j * 0.22;
+      // Leaf clusters at vine nodes
+      ctx.fillStyle = 'rgba(20,40,16,0.85)';
+      for (let j = 0; j < 3; j++) {
+        const lt = 0.22 + j * 0.28;
         const lx = lerp(vx, vx + sway, lt);
         const ly = lerp(0, vlen, lt);
-        ctx.beginPath(); ctx.arc(lx, ly, 2.5, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(lx, ly, 5 + j, 3, (vr() - 0.5) * 1.2, 0, TAU); ctx.fill();
       }
     }
 
-    // Large tropical leaves (banana / heliconia style) angled in from sides & trunks
+    // Large tropical leaves from screen edges and trunks — moonlit highlight edge
     const leafDefs = [
-      { bx: -10,     by: H * 0.52, len: W * 0.22, w: H * 0.06, angle:  0.40 },
-      { bx:  W * 0.15, by: H * 0.58, len: W * 0.20, w: H * 0.05, angle:  0.18 },
-      { bx:  W + 10,   by: H * 0.50, len: W * 0.24, w: H * 0.06, angle: Math.PI - 0.38 },
-      { bx:  W * 0.84, by: H * 0.57, len: W * 0.19, w: H * 0.05, angle: Math.PI - 0.22 },
-      { bx:  W * 0.36, by: H * 0.44, len: W * 0.18, w: H * 0.05, angle:  0.55 },
-      { bx:  W * 0.64, by: H * 0.46, len: W * 0.17, w: H * 0.05, angle: Math.PI - 0.50 },
+      { bx: -8,       by: H * 0.50, len: W * 0.24, hw: H * 0.065, angle: 0.38 },
+      { bx: W * 0.12, by: H * 0.56, len: W * 0.21, hw: H * 0.055, angle: 0.16 },
+      { bx: W + 8,    by: H * 0.48, len: W * 0.25, hw: H * 0.065, angle: Math.PI - 0.35 },
+      { bx: W * 0.86, by: H * 0.55, len: W * 0.20, hw: H * 0.055, angle: Math.PI - 0.20 },
+      { bx: W * 0.34, by: H * 0.42, len: W * 0.19, hw: H * 0.052, angle: 0.52 },
+      { bx: W * 0.65, by: H * 0.44, len: W * 0.18, hw: H * 0.050, angle: Math.PI - 0.48 },
+      { bx: W * 0.05, by: H * 0.66, len: W * 0.15, hw: H * 0.040, angle: 0.25 },
+      { bx: W * 0.92, by: H * 0.64, len: W * 0.14, hw: H * 0.038, angle: Math.PI - 0.28 },
     ];
-    leafDefs.forEach(({ bx, by, len, w, angle }) => {
-      const ex = bx + Math.cos(angle) * len;
-      const ey = by + Math.sin(angle) * len;
-      const mx = bx + Math.cos(angle) * len * 0.5;
-      const my = by + Math.sin(angle) * len * 0.5;
-      const px = Math.cos(angle + Math.PI / 2) * w;
-      const py = Math.sin(angle + Math.PI / 2) * w;
-      ctx.fillStyle = '#112215';
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.quadraticCurveTo(mx + px, my + py, ex, ey);
-      ctx.quadraticCurveTo(mx - px * 0.25, my - py * 0.25, bx, by);
-      ctx.fill();
-      // Midrib
-      ctx.strokeStyle = '#0d1a10'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(ex, ey); ctx.stroke();
-      // 3-4 side veins
-      ctx.lineWidth = 0.7; ctx.strokeStyle = '#0e1c11';
-      for (let v = 1; v <= 4; v++) {
-        const vt = v / 5;
-        const vbx = lerp(bx, ex, vt), vby = lerp(by, ey, vt);
-        ctx.beginPath(); ctx.moveTo(vbx, vby);
-        ctx.lineTo(vbx + px * (1 - vt) * 0.7, vby + py * (1 - vt) * 0.7); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(vbx, vby);
-        ctx.lineTo(vbx - px * (1 - vt) * 0.55, vby - py * (1 - vt) * 0.55); ctx.stroke();
-      }
+    leafDefs.forEach(({ bx, by, len, hw, angle }) => {
+      // Dark fill first
+      tropicalLeaf(bx, by, len, hw, angle, '#152818', '#111f14');
+      // Moonlit edge highlight on upper surface
+      tropicalLeaf(bx, by, len * 0.96, hw * 0.72, angle, 'rgba(28,52,24,0.55)', 'rgba(35,62,28,0.4)');
     });
   }
 
@@ -382,7 +453,7 @@ export function createJungle(canvas) {
     if (t <= 0) return;
 
     const bx = W * 0.28, by = groundY - 10;
-    const sc = Math.min(1, W / 420) * 2.2;
+    const sc = Math.min(1, W / 420) * 1.3;
     const bob = Math.sin(time * 0.0012) * 1.5 * t;
     const pulse = 0.75 + Math.sin(time * 0.0018) * 0.25;
 
@@ -568,153 +639,237 @@ export function createJungle(canvas) {
   }
 
   // ── phantom jaguar ────────────────────────────────────────────────────
-  // Large cat silhouette — body rendered in very dark tones so only the
-  // bioluminescent rosette markings and glowing amber eyes are prominent.
+  // Side-profile jaguar drawn with bezier body outline — not ovals.
+  // The silhouette is near-black so only the cyan rosette markings and
+  // ice-blue eyes glow out of the dark.
 
   function drawJaguar(groundY, time) {
     const t = clamp((bio - 0.92) / 0.08, 0, 1);
     if (t <= 0) return;
 
-    const bx = W * 0.68;
-    const by = groundY + 4;
-    // Bigger scale — jaguar should dominate the scene
+    const bx = W * 0.67, by = groundY + 2;
     const sc = Math.min(1, W / 420) * 2.6;
-    const breathe = Math.sin(time * 0.0008) * 2.5;
+    const breathe = Math.sin(time * 0.0008) * 2;
     const pulse = 0.58 + Math.sin(time * 0.0014) * 0.42;
 
-    // Wide ambient glow in world space
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx, by - 30, 90, 60, 210, 255, t * pulse * 0.38);
+    drawGlow(bx - 30 * sc, by - 28 * sc, 85, 60, 200, 255, t * pulse * 0.32);
     ctx.restore();
 
     ctx.save();
     ctx.translate(bx, by + breathe);
     ctx.scale(sc, sc);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-    const shadow  = `rgba(8,16,12,${t * 0.92})`;
-    const fur     = `rgba(14,26,20,${t * 0.88})`;
-    const glowCol = `rgba(45,${(205 * t) | 0},${(225 * t) | 0},${t * pulse})`;
-    const amber   = `rgba(${(255 * t) | 0},${(195 * t) | 0},${(25 * t) | 0},${t})`;
+    // Coords are in local space. Jaguar faces LEFT (head at negative x).
+    // Ground line is y = 0 here.
 
-    // ── tail: thick, curling upward behind body ────────────────────────
-    ctx.strokeStyle = shadow; ctx.lineWidth = 9; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(22, -12);
-    ctx.bezierCurveTo(38, -6, 44, 8, 34, 20);
-    ctx.bezierCurveTo(28, 26, 18, 22, 20, 14); ctx.stroke();
-    ctx.strokeStyle = fur; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(22, -12);
-    ctx.bezierCurveTo(38, -6, 44, 8, 34, 20);
-    ctx.bezierCurveTo(28, 26, 18, 22, 20, 14); ctx.stroke();
+    const shadow = `rgba(6,12,9,${t * 0.95})`;
+    const fur    = `rgba(16,28,21,${t * 0.90})`;
+    const hilit  = `rgba(22,40,28,${t * 0.80})`; // slight moonlit highlight
+    const glow   = `rgba(40,${(200*t)|0},${(220*t)|0},${t * pulse})`;
+    const eyeIce = `rgba(90,${(190*t)|0},${(255*t)|0},${t})`; // ice blue
 
-    // ── legs: four thick, planted legs ────────────────────────────────
-    ctx.strokeStyle = shadow; ctx.lineWidth = 10; ctx.lineCap = 'round';
-    // Back pair
-    [[-10, -2, -12, 16], [-2, -2, -2, 16]].forEach(([x1,y1,x2,y2]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    });
-    // Front pair
-    ctx.strokeStyle = fur; ctx.lineWidth = 8;
-    [[-10, -2, -12, 16], [-2, -2, -2, 16]].forEach(([x1,y1,x2,y2]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    });
-    // Front legs (lighter — in front of body)
-    ctx.strokeStyle = shadow; ctx.lineWidth = 10;
-    [[8, -4, 8, 16], [16, -4, 14, 16]].forEach(([x1,y1,x2,y2]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    });
-    ctx.strokeStyle = fur; ctx.lineWidth = 8;
-    [[8, -4, 8, 16], [16, -4, 14, 16]].forEach(([x1,y1,x2,y2]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    });
-    // Paws
-    ctx.fillStyle = shadow;
-    [[-12,16],[-2,16],[8,16],[14,16]].forEach(([px,py]) => {
-      ctx.beginPath(); ctx.ellipse(px, py, 5.5, 3.5, 0, 0, TAU); ctx.fill();
-    });
+    // ── TAIL: long sinuous curve behind body ─────────────────────────
+    ctx.strokeStyle = shadow; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(28, -16);
+    ctx.bezierCurveTo(44, -12, 54, 0, 50, 14);
+    ctx.bezierCurveTo(47, 22, 38, 24, 36, 18); ctx.stroke();
+    ctx.strokeStyle = fur; ctx.lineWidth = 5.5;
+    ctx.beginPath(); ctx.moveTo(28, -16);
+    ctx.bezierCurveTo(44, -12, 54, 0, 50, 14);
+    ctx.bezierCurveTo(47, 22, 38, 24, 36, 18); ctx.stroke();
 
-    // ── torso: large powerful body ─────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(4, -10, 26, 15, -0.06, 0, TAU); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(4, -10, 24, 13, -0.06, 0, TAU); ctx.fill();
-
-    // ── neck ──────────────────────────────────────────────────────────
+    // ── BACK LEGS (drawn before body so body overlaps) ───────────────
+    // Far hind leg
     ctx.fillStyle = shadow;
     ctx.beginPath();
-    ctx.moveTo(-14, -18); ctx.quadraticCurveTo(-26, -28, -32, -24);
-    ctx.quadraticCurveTo(-30, -20, -22, -18); ctx.closePath(); ctx.fill();
+    ctx.moveTo(16, -10); ctx.bezierCurveTo(20, -2, 24, 8, 22, 0);
+    ctx.lineTo(26, 0); ctx.bezierCurveTo(28, 10, 22, 18, 18, 0);
+    ctx.bezierCurveTo(16, -6, 14, -10, 16, -10); ctx.fill();
+    // Near hind leg
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(-13, -17); ctx.quadraticCurveTo(-25, -26, -31, -23);
-    ctx.quadraticCurveTo(-29, -19, -21, -17); ctx.closePath(); ctx.fill();
-
-    // ── head: broad, heavy cat skull ──────────────────────────────────
+    ctx.moveTo(10, -8);
+    ctx.bezierCurveTo(16, -2, 18, 8, 14, 0);
+    ctx.bezierCurveTo(16, 4, 18, 14, 12, 0);
+    ctx.bezierCurveTo(8, -4, 7, -8, 10, -8); ctx.fill();
+    // Hind paws
     ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.arc(-36, -26, 16, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(22, 1, 6, 3, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.arc(-36, -26, 14, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(14, 1, 5.5, 2.8, 0.1, 0, TAU); ctx.fill();
 
-    // Muzzle
+    // ── BODY SILHOUETTE: full bezier outline ──────────────────────────
+    // One closed path tracing the jaguar's profile.
+    // Top-left start = scruff of neck, clockwise.
     ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-44, -23, 10, 7, -0.1, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-18, -28);                              // neck scruff
+    ctx.bezierCurveTo(-6, -36, 8, -34, 20, -26);      // back / shoulder blade arch
+    ctx.bezierCurveTo(28, -20, 30, -12, 28, -4);      // rump drop
+    ctx.bezierCurveTo(26, 2, 16, 4, 4, 4);            // belly rear
+    ctx.bezierCurveTo(-6, 4, -16, 2, -22, -6);        // belly front / chest
+    ctx.bezierCurveTo(-26, -14, -24, -22, -18, -28);  // chest up to neck
+    ctx.closePath(); ctx.fill();
+
+    // Slightly lighter fur layer inside for a rounded 3-D look
     ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(-43, -23, 8, 5.5, -0.1, 0, TAU); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-17, -26);
+    ctx.bezierCurveTo(-6, -33, 8, -31, 19, -24);
+    ctx.bezierCurveTo(26, -18, 28, -10, 26, -3);
+    ctx.bezierCurveTo(24, 2, 15, 3, 3, 3);
+    ctx.bezierCurveTo(-6, 3, -15, 1, -21, -6);
+    ctx.bezierCurveTo(-25, -14, -23, -21, -17, -26);
+    ctx.closePath(); ctx.fill();
 
-    // Ears
+    // Dorsal moonlight highlight along the back ridge
+    ctx.strokeStyle = hilit; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-16, -27);
+    ctx.bezierCurveTo(-5, -35, 8, -33, 19, -25);
+    ctx.bezierCurveTo(27, -19, 29, -11, 26, -4);
+    ctx.stroke();
+
+    // ── FRONT LEGS (drawn over body) ──────────────────────────────────
+    // Far front leg
     ctx.fillStyle = shadow;
-    [[-30, -40, -36, -38, -27, -32], [-44, -38, -48, -36, -40, -30]].forEach(([x1,y1,x2,y2,x3,y3]) => {
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
-    });
+    ctx.beginPath();
+    ctx.moveTo(-14, -12);
+    ctx.bezierCurveTo(-16, -4, -16, 4, -14, 0);
+    ctx.bezierCurveTo(-12, 6, -14, 12, -18, 0);
+    ctx.bezierCurveTo(-18, -6, -16, -12, -14, -12); ctx.fill();
+    // Near front leg
+    ctx.fillStyle = fur;
+    ctx.beginPath();
+    ctx.moveTo(-10, -10);
+    ctx.bezierCurveTo(-12, -2, -12, 6, -10, 0);
+    ctx.bezierCurveTo(-8, 8, -10, 14, -14, 0);
+    ctx.bezierCurveTo(-14, -6, -12, -10, -10, -10); ctx.fill();
+    // Front paws
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.ellipse(-17, 1, 5, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.ellipse(-12, 1, 4.5, 2.5, 0.1, 0, TAU); ctx.fill();
 
-    // ── bioluminescent rosette markings ───────────────────────────────
-    const rosettes = [
-      [-4,-18],[4,-14],[12,-10],[18,-6],[-10,-10],
-      [2,-8],[10,-4],[18,-12],[22,-18],[6,-20],
-    ];
+    // ── NECK ──────────────────────────────────────────────────────────
+    ctx.fillStyle = shadow;
+    ctx.beginPath();
+    ctx.moveTo(-18, -28);
+    ctx.bezierCurveTo(-24, -32, -34, -34, -38, -30);
+    ctx.bezierCurveTo(-40, -26, -38, -18, -32, -16);
+    ctx.bezierCurveTo(-26, -14, -20, -16, -18, -20);
+    ctx.bezierCurveTo(-16, -24, -16, -28, -18, -28);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = fur;
+    ctx.beginPath();
+    ctx.moveTo(-18, -27);
+    ctx.bezierCurveTo(-24, -31, -33, -33, -37, -29);
+    ctx.bezierCurveTo(-39, -25, -37, -17, -31, -15);
+    ctx.bezierCurveTo(-25, -13, -19, -15, -17, -19);
+    ctx.bezierCurveTo(-15, -23, -15, -27, -18, -27);
+    ctx.closePath(); ctx.fill();
+
+    // ── HEAD: wide, rounded jaguar skull ──────────────────────────────
+    // Jaguars have the broadest, roundest head of all big cats.
+    ctx.fillStyle = shadow;
+    ctx.beginPath();
+    ctx.moveTo(-28, -44); // top of ear gap
+    ctx.bezierCurveTo(-22, -46, -18, -42, -20, -36); // top of skull
+    ctx.bezierCurveTo(-18, -30, -18, -24, -22, -20); // cheek front edge
+    ctx.bezierCurveTo(-26, -16, -32, -16, -36, -18); // jowl bottom
+    ctx.bezierCurveTo(-44, -20, -52, -22, -54, -26); // muzzle
+    ctx.bezierCurveTo(-54, -30, -46, -34, -40, -34); // muzzle top
+    ctx.bezierCurveTo(-36, -34, -32, -36, -30, -40); // brow
+    ctx.bezierCurveTo(-30, -42, -29, -44, -28, -44);
+    ctx.closePath(); ctx.fill();
+
+    ctx.fillStyle = fur;
+    ctx.beginPath();
+    ctx.moveTo(-29, -42);
+    ctx.bezierCurveTo(-23, -44, -19, -40, -21, -35);
+    ctx.bezierCurveTo(-19, -29, -19, -24, -23, -20);
+    ctx.bezierCurveTo(-27, -16, -33, -16, -37, -18);
+    ctx.bezierCurveTo(-44, -20, -51, -22, -53, -26);
+    ctx.bezierCurveTo(-53, -30, -46, -33, -40, -33);
+    ctx.bezierCurveTo(-36, -33, -32, -35, -30, -39);
+    ctx.bezierCurveTo(-29, -41, -29, -42, -29, -42);
+    ctx.closePath(); ctx.fill();
+
+    // Muzzle / lip area lighter
+    ctx.fillStyle = hilit;
+    ctx.beginPath();
+    ctx.moveTo(-52, -26); ctx.bezierCurveTo(-52, -22, -44, -18, -36, -18);
+    ctx.bezierCurveTo(-32, -18, -28, -20, -28, -24);
+    ctx.bezierCurveTo(-30, -28, -38, -28, -44, -26);
+    ctx.bezierCurveTo(-48, -24, -52, -24, -52, -26); ctx.fill();
+    // Nostril
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.ellipse(-52, -27, 2.5, 1.8, -0.2, 0, TAU); ctx.fill();
+
+    // ── EARS: rounded, slightly cupped ────────────────────────────────
+    // Far ear (back)
+    ctx.fillStyle = shadow;
+    ctx.beginPath();
+    ctx.moveTo(-29, -41); ctx.bezierCurveTo(-25, -52, -20, -55, -18, -50);
+    ctx.bezierCurveTo(-16, -44, -20, -40, -24, -40); ctx.closePath(); ctx.fill();
+    // Near ear
+    ctx.beginPath();
+    ctx.moveTo(-44, -38); ctx.bezierCurveTo(-40, -50, -34, -54, -32, -48);
+    ctx.bezierCurveTo(-30, -42, -34, -38, -38, -38); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(22,40,28,${t * 0.7})`; // inner ear slightly lighter
+    ctx.beginPath();
+    ctx.moveTo(-30, -41); ctx.bezierCurveTo(-27, -50, -22, -52, -21, -47);
+    ctx.bezierCurveTo(-20, -43, -23, -40, -26, -40); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-43, -39); ctx.bezierCurveTo(-40, -48, -35, -51, -33, -46);
+    ctx.bezierCurveTo(-32, -42, -35, -39, -38, -39); ctx.closePath(); ctx.fill();
+
+    // ── BIOLUMINESCENT ROSETTE MARKINGS ───────────────────────────────
     const mr = rng(99);
-    rosettes.forEach(([mx, my]) => {
-      const ms = 2.8 + mr() * 2.2;
-      // Centre dot
-      ctx.fillStyle = glowCol;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 0.55, 0, TAU); ctx.fill();
-      // Rosette ring of 4-5 satellite dots
-      ctx.strokeStyle = glowCol; ctx.lineWidth = 1.8;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 1.65, 0, TAU); ctx.stroke();
+    [
+      [0,-24],[8,-18],[16,-12],[22,-20],[12,-6],
+      [4,-10],[18,-26],[24,-14],[-4,-16],
+    ].forEach(([mx, my]) => {
+      const ms = 2.4 + mr() * 2;
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(mx, my, ms * 0.48, 0, TAU); ctx.fill();
+      ctx.strokeStyle = glow; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(mx, my, ms * 1.55, 0, TAU); ctx.stroke();
     });
-    // A few shoulder/back flank markings
-    [[-8,-24],[-2,-26],[6,-24],[-14,-16]].forEach(([mx, my]) => {
-      const ms = 2.2 + mr() * 1.5;
-      ctx.fillStyle = glowCol;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 0.5, 0, TAU); ctx.fill();
-      ctx.strokeStyle = glowCol; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 1.5, 0, TAU); ctx.stroke();
+    // Head spots
+    [[-34,-26],[-40,-28],[-30,-20],[-44,-24]].forEach(([mx, my]) => {
+      ctx.strokeStyle = glow; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(mx, my, 2.2, 0, TAU); ctx.stroke();
     });
 
-    // ── glowing amber eyes ────────────────────────────────────────────
-    // Eye glow in local coords — we draw in world-space equivalent via screen mode
-    // (glow is called outside translate in world space)
-    ctx.fillStyle = amber;
-    ctx.beginPath(); ctx.ellipse(-31, -29, 4.5, 3.5, 0.12, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-41, -29, 4.5, 3.5, 0.12, 0, TAU); ctx.fill();
-    // Pupil
+    // ── EYES: small, sharp, ice-blue with vertical slit pupil ─────────
+    // Eye sockets
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.ellipse(-32, -32, 5, 4, 0.15, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-42, -32, 5, 4, 0.15, 0, TAU); ctx.fill();
+    // Ice-blue iris — small and sharp
+    ctx.fillStyle = eyeIce;
+    ctx.beginPath(); ctx.ellipse(-32, -32, 3.5, 2.8, 0.15, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-42, -32, 3.5, 2.8, 0.15, 0, TAU); ctx.fill();
+    // Vertical slit pupil
     ctx.fillStyle = 'rgba(0,0,0,0.97)';
-    ctx.beginPath(); ctx.ellipse(-31, -29, 1.6, 3.5, 0.12, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-41, -29, 1.6, 3.5, 0.12, 0, TAU); ctx.fill();
-    // Shine
-    ctx.fillStyle = `rgba(255,255,255,${0.7 * t})`;
-    ctx.beginPath(); ctx.arc(-29.5, -31, 1.2, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(-39.5, -31, 1.2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-32, -32, 1.0, 2.8, 0.15, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-42, -32, 1.0, 2.8, 0.15, 0, TAU); ctx.fill();
+    // Sharp specular glint
+    ctx.fillStyle = `rgba(255,255,255,${0.82 * t})`;
+    ctx.beginPath(); ctx.arc(-30.8, -33.5, 0.9, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(-40.8, -33.5, 0.9, 0, TAU); ctx.fill();
 
     ctx.restore();
 
-    // Eye glows in world space (after restore so coords are correct)
+    // Ice-blue eye glows in world space
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    const ex1 = bx + (-31) * sc, ey1 = by + breathe + (-29) * sc;
-    const ex2 = bx + (-41) * sc, ey2 = by + breathe + (-29) * sc;
-    drawGlow(ex1, ey1, 22, 255, 195, 25, t * pulse * 0.7);
-    drawGlow(ex2, ey2, 22, 255, 195, 25, t * pulse * 0.7);
+    drawGlow(bx + (-32) * sc, by + breathe + (-32) * sc, 18, 90, 190, 255, t * pulse * 0.75);
+    drawGlow(bx + (-42) * sc, by + breathe + (-32) * sc, 18, 90, 190, 255, t * pulse * 0.75);
     ctx.restore();
   }
 
