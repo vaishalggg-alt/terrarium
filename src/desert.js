@@ -15,25 +15,20 @@ const blend = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2],
 const rgb = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 const ease = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
-// ── approach / walk cycle helpers ────────────────────────────────────────────
-// Each animal walks in, drinks, walks back on an independent cycle.
-// Offsets stagger them so they don't all arrive simultaneously.
-const CYCLE_MS = 28000; // full cycle length (ms)
+// ── approach helpers — one-way walk-in, animals stay at pool forever ─────────
+const WALK_MS = 5000; // how long the walk-in takes
 
-function cycleFrac(time, offsetMs) {
-  return ((time + offsetMs) % CYCLE_MS) / CYCLE_MS;
-}
-
-// Returns 0 (waiting) → 1 (at pool). Animals walk in once and stay.
-function approachT(frac) {
-  if (frac < 0.12) return 0;
-  if (frac < 0.35) return ease((frac - 0.12) / 0.23);
+// Each animal starts walking after its own delay, then stays at ap=1.
+function approachT(time, delayMs) {
+  const elapsed = time - delayMs;
+  if (elapsed <= 0) return 0;
+  if (elapsed < WALK_MS) return ease(elapsed / WALK_MS);
   return 1;
 }
 
-// 1 only during the walk-in
-function walkFrac(frac) {
-  return (frac > 0.12 && frac < 0.35) ? 1 : 0;
+function walkFrac(time, delayMs) {
+  const elapsed = time - delayMs;
+  return (elapsed > 0 && elapsed < WALK_MS) ? 1 : 0;
 }
 
 function rng(seed) {
@@ -432,17 +427,16 @@ export function createDesert(canvas) {
     const { cx, r } = pool;
     const sc = Math.min(1, W / 480);
 
-    const frac = cycleFrac(time, CYCLE_MS * 0.30);
-    const ap = approachT(frac);
-    const walking = walkFrac(frac);
-    const drinkX = cx + r + 10;
+    const ap = approachT(time, 2000);
+    const walking = walkFrac(time, 2000);
+    const drinkX = cx + r + 14;
     const drinkY = groundY + 2;
-    const restX  = Math.min(W + 20, W - 5);
+    const restX  = W + 20;
     const restY  = groundY + 60;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
-    const drinkT = ap > 0.88 ? (ap - 0.88) / 0.12 : 0; // head dip when at pool
+    const drinkT = ap === 1 ? 1 : 0;
     const [fr, fl, br, bl] = legSwing(time, walking);
 
     ctx.save();
@@ -584,8 +578,7 @@ export function createDesert(canvas) {
     const { cx, r } = pool;
     const sc = Math.min(1, W / 480);
 
-    const frac = cycleFrac(time, CYCLE_MS * 0.46);
-    const ap = approachT(frac);
+    const ap = approachT(time, 5000);
     const drinkX = cx - r - 18;
     const drinkY = groundY + 2;
     const restX  = -20;
@@ -706,17 +699,16 @@ export function createDesert(canvas) {
     const { cx, r } = pool;
     const sc = Math.min(1, W / 480);
 
-    const frac = cycleFrac(time, CYCLE_MS * 0.62);
-    const ap = approachT(frac);
-    const walking = walkFrac(frac);
-    const drinkX = cx + r + 65;
-    const drinkY = groundY - 10;
+    const ap = approachT(time, 8000);
+    const walking = walkFrac(time, 8000);
+    const drinkX = cx + r + 70;
+    const drinkY = groundY + 2;
     const restX  = W + 60;
     const restY  = groundY - 50;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
-    const drinkT = ap > 0.88 ? (ap - 0.88) / 0.12 : 0;
+    const drinkT = ap === 1 ? 1 : 0;
     const [fr, fl, br, bl] = legSwing(time, walking);
 
     ctx.save();
@@ -811,8 +803,7 @@ export function createDesert(canvas) {
     const { cx, r } = pool;
     const sc = Math.min(1, W / 480);
 
-    const frac = cycleFrac(time, CYCLE_MS * 0.78);
-    const ap = approachT(frac);
+    const ap = approachT(time, 11000);
     const drinkX = cx - r - 20;
     const drinkY = groundY - 30;
     const restX  = W * 0.1;
@@ -910,17 +901,16 @@ export function createDesert(canvas) {
     const { cx, r } = pool;
     const sc = Math.min(1, W / 480);
 
-    const frac = cycleFrac(time, 0);
-    const ap = approachT(frac);
-    const walking = walkFrac(frac);
+    const ap = approachT(time, 14000);
+    const walking = walkFrac(time, 14000);
     const drinkX = clamp(cx - r - 10, 30, W * 0.42);
     const drinkY = groundY + 4;
-    const restX  = -80;
-    const restY  = groundY + 55;
+    const restX  = -120;
+    const restY  = groundY + 40;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
-    const drinkT = ap > 0.88 ? (ap - 0.88) / 0.12 : 0;
+    const drinkT = ap === 1 ? 1 : 0;
     const chew = Math.abs(Math.sin(time * 0.0016)) * 2.5;
     const neckDip = drinkT * 18;
 
