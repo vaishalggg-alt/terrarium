@@ -639,22 +639,24 @@ export function createJungle(canvas) {
   }
 
   // ── phantom jaguar ────────────────────────────────────────────────────
-  // Side-profile jaguar drawn with bezier body outline — not ovals.
-  // The silhouette is near-black so only the cyan rosette markings and
-  // ice-blue eyes glow out of the dark.
+  // Key anatomy: jaguars have the largest, roundest head of any big cat —
+  // nearly a perfect circle in profile. The muzzle barely protrudes.
+  // Ears are small and rounded (not tall/pointy like a fox).
+  // Body is a deep barrel with very short legs.
 
   function drawJaguar(groundY, time) {
     const t = clamp((bio - 0.92) / 0.08, 0, 1);
     if (t <= 0) return;
 
-    const bx = W * 0.67, by = groundY + 2;
+    const bx = W * 0.63, by = groundY + 2;
     const sc = Math.min(1, W / 420) * 2.6;
-    const breathe = Math.sin(time * 0.0008) * 2;
+    const breathe = Math.sin(time * 0.0008) * 1.5;
     const pulse = 0.58 + Math.sin(time * 0.0014) * 0.42;
 
+    // Body glow
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx - 30 * sc, by - 28 * sc, 85, 60, 200, 255, t * pulse * 0.32);
+    drawGlow(bx, by - 38 * sc, 90, 60, 200, 255, t * pulse * 0.28);
     ctx.restore();
 
     ctx.save();
@@ -662,214 +664,170 @@ export function createJungle(canvas) {
     ctx.scale(sc, sc);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-    // Coords are in local space. Jaguar faces LEFT (head at negative x).
-    // Ground line is y = 0 here.
+    // Seated jaguar, 3/4 view. Ground = y=0. Head at top, haunches at bottom.
+    // Faces slightly left. Total height ~68 local units.
 
     const shadow = `rgba(6,12,9,${t * 0.95})`;
-    const fur    = `rgba(16,28,21,${t * 0.90})`;
-    const hilit  = `rgba(22,40,28,${t * 0.80})`; // slight moonlit highlight
+    const fur    = `rgba(18,32,24,${t * 0.90})`;
+    const hilit  = `rgba(30,52,38,${t * 0.85})`;
     const glow   = `rgba(40,${(200*t)|0},${(220*t)|0},${t * pulse})`;
-    const eyeIce = `rgba(90,${(190*t)|0},${(255*t)|0},${t})`; // ice blue
+    const eyeIce = `rgba(90,${(190*t)|0},${(255*t)|0},${t})`;
 
-    // ── TAIL: long sinuous curve behind body ─────────────────────────
+    // ── TAIL: sweeps from right haunch, curls around right side ──────
     ctx.strokeStyle = shadow; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(28, -16);
-    ctx.bezierCurveTo(44, -12, 54, 0, 50, 14);
-    ctx.bezierCurveTo(47, 22, 38, 24, 36, 18); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(18, -10);
+    ctx.bezierCurveTo(32, -6, 40, 2, 36, 10);
+    ctx.bezierCurveTo(32, 16, 22, 14, 20, 6);
+    ctx.stroke();
     ctx.strokeStyle = fur; ctx.lineWidth = 5.5;
-    ctx.beginPath(); ctx.moveTo(28, -16);
-    ctx.bezierCurveTo(44, -12, 54, 0, 50, 14);
-    ctx.bezierCurveTo(47, 22, 38, 24, 36, 18); ctx.stroke();
-
-    // ── BACK LEGS (drawn before body so body overlaps) ───────────────
-    // Far hind leg
-    ctx.fillStyle = shadow;
     ctx.beginPath();
-    ctx.moveTo(16, -10); ctx.bezierCurveTo(20, -2, 24, 8, 22, 0);
-    ctx.lineTo(26, 0); ctx.bezierCurveTo(28, 10, 22, 18, 18, 0);
-    ctx.bezierCurveTo(16, -6, 14, -10, 16, -10); ctx.fill();
-    // Near hind leg
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(10, -8);
-    ctx.bezierCurveTo(16, -2, 18, 8, 14, 0);
-    ctx.bezierCurveTo(16, 4, 18, 14, 12, 0);
-    ctx.bezierCurveTo(8, -4, 7, -8, 10, -8); ctx.fill();
-    // Hind paws
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(22, 1, 6, 3, 0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(14, 1, 5.5, 2.8, 0.1, 0, TAU); ctx.fill();
-
-    // ── BODY SILHOUETTE: full bezier outline ──────────────────────────
-    // One closed path tracing the jaguar's profile.
-    // Top-left start = scruff of neck, clockwise.
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-18, -28);                              // neck scruff
-    ctx.bezierCurveTo(-6, -36, 8, -34, 20, -26);      // back / shoulder blade arch
-    ctx.bezierCurveTo(28, -20, 30, -12, 28, -4);      // rump drop
-    ctx.bezierCurveTo(26, 2, 16, 4, 4, 4);            // belly rear
-    ctx.bezierCurveTo(-6, 4, -16, 2, -22, -6);        // belly front / chest
-    ctx.bezierCurveTo(-26, -14, -24, -22, -18, -28);  // chest up to neck
-    ctx.closePath(); ctx.fill();
-
-    // Slightly lighter fur layer inside for a rounded 3-D look
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-17, -26);
-    ctx.bezierCurveTo(-6, -33, 8, -31, 19, -24);
-    ctx.bezierCurveTo(26, -18, 28, -10, 26, -3);
-    ctx.bezierCurveTo(24, 2, 15, 3, 3, 3);
-    ctx.bezierCurveTo(-6, 3, -15, 1, -21, -6);
-    ctx.bezierCurveTo(-25, -14, -23, -21, -17, -26);
-    ctx.closePath(); ctx.fill();
-
-    // Dorsal moonlight highlight along the back ridge
-    ctx.strokeStyle = hilit; ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(-16, -27);
-    ctx.bezierCurveTo(-5, -35, 8, -33, 19, -25);
-    ctx.bezierCurveTo(27, -19, 29, -11, 26, -4);
+    ctx.moveTo(18, -10);
+    ctx.bezierCurveTo(32, -6, 40, 2, 36, 10);
+    ctx.bezierCurveTo(32, 16, 22, 14, 20, 6);
     ctx.stroke();
 
-    // ── FRONT LEGS (drawn over body) ──────────────────────────────────
-    // Far front leg
+    // ── HAUNCHES: wide rounded mass at bottom ─────────────────────────
     ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-14, -12);
-    ctx.bezierCurveTo(-16, -4, -16, 4, -14, 0);
-    ctx.bezierCurveTo(-12, 6, -14, 12, -18, 0);
-    ctx.bezierCurveTo(-18, -6, -16, -12, -14, -12); ctx.fill();
-    // Near front leg
+    ctx.beginPath(); ctx.ellipse(6, -6, 21, 13, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-10, -10);
-    ctx.bezierCurveTo(-12, -2, -12, 6, -10, 0);
-    ctx.bezierCurveTo(-8, 8, -10, 14, -14, 0);
-    ctx.bezierCurveTo(-14, -6, -12, -10, -10, -10); ctx.fill();
-    // Front paws
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-17, 1, 5, 2.5, 0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(-12, 1, 4.5, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -6, 19, 11, 0, 0, TAU); ctx.fill();
 
-    // ── NECK ──────────────────────────────────────────────────────────
+    // ── BARREL CHEST / TORSO: deep and dominant ───────────────────────
     ctx.fillStyle = shadow;
     ctx.beginPath();
-    ctx.moveTo(-18, -28);
-    ctx.bezierCurveTo(-24, -32, -34, -34, -38, -30);
-    ctx.bezierCurveTo(-40, -26, -38, -18, -32, -16);
-    ctx.bezierCurveTo(-26, -14, -20, -16, -18, -20);
-    ctx.bezierCurveTo(-16, -24, -16, -28, -18, -28);
+    ctx.moveTo(-14, -16);
+    ctx.bezierCurveTo(-20, -30, -20, -46, -12, -52);
+    ctx.bezierCurveTo(-4, -56, 10, -54, 16, -48);
+    ctx.bezierCurveTo(22, -40, 20, -26, 18, -14);
+    ctx.bezierCurveTo(12, -8, -6, -8, -14, -16);
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(-18, -27);
-    ctx.bezierCurveTo(-24, -31, -33, -33, -37, -29);
-    ctx.bezierCurveTo(-39, -25, -37, -17, -31, -15);
-    ctx.bezierCurveTo(-25, -13, -19, -15, -17, -19);
-    ctx.bezierCurveTo(-15, -23, -15, -27, -18, -27);
+    ctx.moveTo(-13, -17);
+    ctx.bezierCurveTo(-18, -30, -18, -45, -11, -50);
+    ctx.bezierCurveTo(-4, -54, 9, -52, 14, -47);
+    ctx.bezierCurveTo(20, -39, 18, -26, 16, -15);
+    ctx.bezierCurveTo(10, -9, -5, -9, -13, -17);
     ctx.closePath(); ctx.fill();
+    // Chest highlight stripe
+    ctx.strokeStyle = hilit; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-12, -20);
+    ctx.bezierCurveTo(-17, -34, -16, -46, -9, -50);
+    ctx.stroke();
 
-    // ── HEAD: wide, rounded jaguar skull ──────────────────────────────
-    // Jaguars have the broadest, roundest head of all big cats.
+    // ── FRONT LEGS: two thick pillars planted straight down ───────────
+    // Far (right) leg
     ctx.fillStyle = shadow;
     ctx.beginPath();
-    ctx.moveTo(-28, -44); // top of ear gap
-    ctx.bezierCurveTo(-22, -46, -18, -42, -20, -36); // top of skull
-    ctx.bezierCurveTo(-18, -30, -18, -24, -22, -20); // cheek front edge
-    ctx.bezierCurveTo(-26, -16, -32, -16, -36, -18); // jowl bottom
-    ctx.bezierCurveTo(-44, -20, -52, -22, -54, -26); // muzzle
-    ctx.bezierCurveTo(-54, -30, -46, -34, -40, -34); // muzzle top
-    ctx.bezierCurveTo(-36, -34, -32, -36, -30, -40); // brow
-    ctx.bezierCurveTo(-30, -42, -29, -44, -28, -44);
+    ctx.moveTo(6, -38);
+    ctx.bezierCurveTo(12, -36, 14, -20, 12, 0);
+    ctx.lineTo(5, 0);
+    ctx.bezierCurveTo(4, -20, 2, -36, 6, -38);
     ctx.closePath(); ctx.fill();
-
+    // Near (left) leg
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(-29, -42);
-    ctx.bezierCurveTo(-23, -44, -19, -40, -21, -35);
-    ctx.bezierCurveTo(-19, -29, -19, -24, -23, -20);
-    ctx.bezierCurveTo(-27, -16, -33, -16, -37, -18);
-    ctx.bezierCurveTo(-44, -20, -51, -22, -53, -26);
-    ctx.bezierCurveTo(-53, -30, -46, -33, -40, -33);
-    ctx.bezierCurveTo(-36, -33, -32, -35, -30, -39);
-    ctx.bezierCurveTo(-29, -41, -29, -42, -29, -42);
+    ctx.moveTo(-8, -36);
+    ctx.bezierCurveTo(-2, -34, 0, -18, -2, 0);
+    ctx.lineTo(-9, 0);
+    ctx.bezierCurveTo(-12, -18, -14, -34, -8, -36);
+    ctx.closePath(); ctx.fill();
+    // Paws
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.ellipse(9, 1, 7, 3.5, 0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.ellipse(-5, 1, 6.5, 3.2, 0.1, 0, TAU); ctx.fill();
+
+    // ── NECK: thick and short ─────────────────────────────────────────
+    ctx.fillStyle = shadow;
+    ctx.beginPath();
+    ctx.moveTo(-10, -48);
+    ctx.bezierCurveTo(-12, -56, -8, -62, -2, -64);
+    ctx.bezierCurveTo(4, -66, 10, -62, 12, -56);
+    ctx.bezierCurveTo(14, -48, 10, -44, 4, -42);
+    ctx.bezierCurveTo(-2, -40, -8, -42, -10, -48);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = fur;
+    ctx.beginPath();
+    ctx.moveTo(-9, -49);
+    ctx.bezierCurveTo(-11, -56, -7, -61, -2, -63);
+    ctx.bezierCurveTo(4, -65, 9, -61, 11, -55);
+    ctx.bezierCurveTo(13, -47, 9, -43, 4, -41);
+    ctx.bezierCurveTo(-2, -39, -8, -41, -9, -49);
     ctx.closePath(); ctx.fill();
 
-    // Muzzle / lip area lighter
+    // ── HEAD: large round skull — the dominant feature ─────────────────
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.arc(0, -74, 15, 0, TAU); ctx.fill();
+    ctx.fillStyle = fur;
+    ctx.beginPath(); ctx.arc(0, -74, 13, 0, TAU); ctx.fill();
+
+    // Muzzle: small blunt protrusion to the lower-left
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.ellipse(-13, -72, 8, 6, 0.25, 0, TAU); ctx.fill();
     ctx.fillStyle = hilit;
-    ctx.beginPath();
-    ctx.moveTo(-52, -26); ctx.bezierCurveTo(-52, -22, -44, -18, -36, -18);
-    ctx.bezierCurveTo(-32, -18, -28, -20, -28, -24);
-    ctx.bezierCurveTo(-30, -28, -38, -28, -44, -26);
-    ctx.bezierCurveTo(-48, -24, -52, -24, -52, -26); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-13, -72, 6.5, 5, 0.25, 0, TAU); ctx.fill();
     // Nostril
     ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-52, -27, 2.5, 1.8, -0.2, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-19, -73, 2, 1.4, -0.1, 0, TAU); ctx.fill();
+    // Mouth line
+    ctx.strokeStyle = shadow; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-19, -69); ctx.quadraticCurveTo(-14, -71, -9, -70); ctx.stroke();
 
-    // ── EARS: rounded, slightly cupped ────────────────────────────────
-    // Far ear (back)
+    // ── EARS: small rounded bumps on top of skull ─────────────────────
     ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-29, -41); ctx.bezierCurveTo(-25, -52, -20, -55, -18, -50);
-    ctx.bezierCurveTo(-16, -44, -20, -40, -24, -40); ctx.closePath(); ctx.fill();
-    // Near ear
-    ctx.beginPath();
-    ctx.moveTo(-44, -38); ctx.bezierCurveTo(-40, -50, -34, -54, -32, -48);
-    ctx.bezierCurveTo(-30, -42, -34, -38, -38, -38); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(22,40,28,${t * 0.7})`; // inner ear slightly lighter
-    ctx.beginPath();
-    ctx.moveTo(-30, -41); ctx.bezierCurveTo(-27, -50, -22, -52, -21, -47);
-    ctx.bezierCurveTo(-20, -43, -23, -40, -26, -40); ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-43, -39); ctx.bezierCurveTo(-40, -48, -35, -51, -33, -46);
-    ctx.bezierCurveTo(-32, -42, -35, -39, -38, -39); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(-8, -86, 6, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(8, -85, 6, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(22,40,28,${t * 0.7})`;
+    ctx.beginPath(); ctx.arc(-8, -86, 4, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(8, -85, 4, Math.PI, 0); ctx.closePath(); ctx.fill();
 
-    // ── BIOLUMINESCENT ROSETTE MARKINGS ───────────────────────────────
+    // ── ROSETTE MARKINGS across entire body ───────────────────────────
     const mr = rng(99);
     [
-      [0,-24],[8,-18],[16,-12],[22,-20],[12,-6],
-      [4,-10],[18,-26],[24,-14],[-4,-16],
+      [2,-26],[10,-20],[14,-36],[-2,-30],[16,-14],[8,-42],
+      [0,-16],[12,-28],[4,-12],[14,-44],[-4,-22],[6,-32]
     ].forEach(([mx, my]) => {
-      const ms = 2.4 + mr() * 2;
+      const ms = 2.0 + mr() * 2;
       ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 0.48, 0, TAU); ctx.fill();
-      ctx.strokeStyle = glow; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 1.55, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(mx, my, ms * 0.44, 0, TAU); ctx.fill();
+      ctx.strokeStyle = glow; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(mx, my, ms * 1.5, 0, TAU); ctx.stroke();
     });
     // Head spots
-    [[-34,-26],[-40,-28],[-30,-20],[-44,-24]].forEach(([mx, my]) => {
+    [[-4,-70],[4,-68],[-10,-76],[6,-78]].forEach(([mx, my]) => {
       ctx.strokeStyle = glow; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(mx, my, 2.2, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(mx, my, 2, 0, TAU); ctx.stroke();
+    });
+    // Leg spots
+    [[8,-22],[8,-12],[-6,-20],[-6,-10]].forEach(([mx, my]) => {
+      ctx.strokeStyle = glow; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(mx, my, 1.8, 0, TAU); ctx.stroke();
     });
 
-    // ── EYES: small, sharp, ice-blue with vertical slit pupil ─────────
-    // Eye sockets
+    // ── EYES: small, sharp, ice-blue with slit pupils ─────────────────
     ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-32, -32, 5, 4, 0.15, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-42, -32, 5, 4, 0.15, 0, TAU); ctx.fill();
-    // Ice-blue iris — small and sharp
+    ctx.beginPath(); ctx.ellipse(-6, -74, 4.5, 3.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -74, 4.5, 3.5, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = eyeIce;
-    ctx.beginPath(); ctx.ellipse(-32, -32, 3.5, 2.8, 0.15, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-42, -32, 3.5, 2.8, 0.15, 0, TAU); ctx.fill();
-    // Vertical slit pupil
+    ctx.beginPath(); ctx.ellipse(-6, -74, 3.2, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -74, 3.2, 2.5, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.97)';
-    ctx.beginPath(); ctx.ellipse(-32, -32, 1.0, 2.8, 0.15, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-42, -32, 1.0, 2.8, 0.15, 0, TAU); ctx.fill();
-    // Sharp specular glint
+    ctx.beginPath(); ctx.ellipse(-6, -74, 0.9, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -74, 0.9, 2.5, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = `rgba(255,255,255,${0.82 * t})`;
-    ctx.beginPath(); ctx.arc(-30.8, -33.5, 0.9, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(-40.8, -33.5, 0.9, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(-4.8, -75.4, 0.8, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(7.2, -75.4, 0.8, 0, TAU); ctx.fill();
 
     ctx.restore();
 
-    // Ice-blue eye glows in world space
+    // Eye glow in world space
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx + (-32) * sc, by + breathe + (-32) * sc, 18, 90, 190, 255, t * pulse * 0.75);
-    drawGlow(bx + (-42) * sc, by + breathe + (-32) * sc, 18, 90, 190, 255, t * pulse * 0.75);
+    drawGlow(bx + (-6) * sc, by + breathe + (-74) * sc, 18, 90, 190, 255, t * pulse * 0.75);
+    drawGlow(bx + (6) * sc, by + breathe + (-74) * sc, 18, 90, 190, 255, t * pulse * 0.75);
     ctx.restore();
   }
 
