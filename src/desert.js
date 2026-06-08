@@ -24,18 +24,16 @@ function cycleFrac(time, offsetMs) {
   return ((time + offsetMs) % CYCLE_MS) / CYCLE_MS;
 }
 
-// Returns 0 (at rest) → 1 (at pool)
+// Returns 0 (waiting) → 1 (at pool). Animals walk in once and stay.
 function approachT(frac) {
   if (frac < 0.12) return 0;
   if (frac < 0.35) return ease((frac - 0.12) / 0.23);
-  if (frac < 0.68) return 1;
-  if (frac < 0.90) return 1 - ease((frac - 0.68) / 0.22);
-  return 0;
+  return 1;
 }
 
-// 1 while the animal is walking (either direction)
+// 1 only during the walk-in
 function walkFrac(frac) {
-  return (frac > 0.12 && frac < 0.35) || (frac > 0.68 && frac < 0.90) ? 1 : 0;
+  return (frac > 0.12 && frac < 0.35) ? 1 : 0;
 }
 
 function rng(seed) {
@@ -588,10 +586,10 @@ export function createDesert(canvas) {
 
     const frac = cycleFrac(time, CYCLE_MS * 0.46);
     const ap = approachT(frac);
-    const drinkX = cx + r + 55;
+    const drinkX = cx - r - 18;
     const drinkY = groundY + 2;
-    const restX  = W - 20;
-    const restY  = groundY - 80;
+    const restX  = -20;
+    const restY  = groundY - 60;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -711,10 +709,10 @@ export function createDesert(canvas) {
     const frac = cycleFrac(time, CYCLE_MS * 0.62);
     const ap = approachT(frac);
     const walking = walkFrac(frac);
-    const drinkX = cx + r + 55;
-    const drinkY = groundY + 2;
+    const drinkX = cx + r + 65;
+    const drinkY = groundY - 10;
     const restX  = W + 60;
-    const restY  = groundY + 30;
+    const restY  = groundY - 50;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
