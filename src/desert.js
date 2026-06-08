@@ -437,10 +437,12 @@ export function createDesert(canvas) {
     const frac = cycleFrac(time, CYCLE_MS * 0.30);
     const ap = approachT(frac);
     const walking = walkFrac(frac);
-    const drinkX = cx + r + 6;
-    const restX  = Math.min(cx + r + 130, W - 10);
+    const drinkX = cx + r + 10;
+    const drinkY = groundY + 2;
+    const restX  = Math.min(W + 20, W - 5);
+    const restY  = groundY + 60;
     const bx = lerp(restX, drinkX, ap);
-    const by = groundY + 2;
+    const by = lerp(restY, drinkY, ap);
 
     const drinkT = ap > 0.88 ? (ap - 0.88) / 0.12 : 0; // head dip when at pool
     const [fr, fl, br, bl] = legSwing(time, walking);
@@ -584,8 +586,14 @@ export function createDesert(canvas) {
     const { cx, r } = pool;
     const sc = Math.min(1, W / 480);
 
-    const bx = cx - r - 10;
-    const by = groundY + 6;
+    const frac = cycleFrac(time, CYCLE_MS * 0.46);
+    const ap = approachT(frac);
+    const drinkX = cx + r + 55;
+    const drinkY = groundY + 2;
+    const restX  = W - 20;
+    const restY  = groundY - 80;
+    const bx = lerp(restX, drinkX, ap);
+    const by = lerp(restY, drinkY, ap);
 
     // Head bobs gently toward water
     const headSway = Math.sin(time * 0.0008) * 0.15;
@@ -703,10 +711,12 @@ export function createDesert(canvas) {
     const frac = cycleFrac(time, CYCLE_MS * 0.62);
     const ap = approachT(frac);
     const walking = walkFrac(frac);
-    const drinkX = cx + r + 52;
-    const restX  = Math.min(W + 60, W + 50); // enters from right edge
+    const drinkX = cx + r + 55;
+    const drinkY = groundY + 2;
+    const restX  = W + 60;
+    const restY  = groundY + 30;
     const bx = lerp(restX, drinkX, ap);
-    const by = groundY + 2;
+    const by = lerp(restY, drinkY, ap);
 
     const drinkT = ap > 0.88 ? (ap - 0.88) / 0.12 : 0;
     const [fr, fl, br, bl] = legSwing(time, walking);
@@ -805,10 +815,12 @@ export function createDesert(canvas) {
 
     const frac = cycleFrac(time, CYCLE_MS * 0.78);
     const ap = approachT(frac);
-    const drinkX = cx + r + 52; // same x-lane as coyote rest when coyote is away
-    const restX  = clamp(W * 0.87, cx + r + 90, W - 15);
+    const drinkX = cx - r - 20;
+    const drinkY = groundY - 30;
+    const restX  = W * 0.1;
+    const restY  = groundY - 140;
     const bx = lerp(restX, drinkX, ap);
-    const by = lerp(groundY - 52, groundY + 2, ap); // descends from rock to ground
+    const by = lerp(restY, drinkY, ap);
 
     const swivel = Math.sin(time * 0.0007) * 0.28;
     const bobT = clamp((Math.sin(time * 0.0012) - 0.6) / 0.4, 0, 1);
@@ -903,10 +915,12 @@ export function createDesert(canvas) {
     const frac = cycleFrac(time, 0);
     const ap = approachT(frac);
     const walking = walkFrac(frac);
-    const drinkX = clamp(cx - r - 10, 30, W * 0.42); // neck just reaches pool
-    const restX  = -100; // enters from off-screen left
+    const drinkX = clamp(cx - r - 10, 30, W * 0.42);
+    const drinkY = groundY + 4;
+    const restX  = -80;
+    const restY  = groundY + 55;
     const bx = lerp(restX, drinkX, ap);
-    const by = groundY + 4;
+    const by = lerp(restY, drinkY, ap);
 
     const drinkT = ap > 0.88 ? (ap - 0.88) / 0.12 : 0;
     const chew = Math.abs(Math.sin(time * 0.0016)) * 2.5;
