@@ -429,12 +429,10 @@ export function createDesert(canvas) {
 
     const ap = approachT(time, 2000);
     const walking = walkFrac(time, 2000);
-    // 3 o'clock — right edge
-    const angle = 0;
-    const drinkX = cx + Math.cos(angle) * (r + 14);
-    const drinkY = cy + Math.sin(angle) * (ry + 8);
-    const restX  = W + 20;
-    const restY  = groundY + 60;
+    const drinkX = W * 0.68;
+    const drinkY = groundY + 2;
+    const restX  = W + 30;
+    const restY  = groundY + 40;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -443,7 +441,7 @@ export function createDesert(canvas) {
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.1 * sc, 2.1 * sc); // head at -x → faces left toward pool ✓
+    ctx.scale(1.3 * sc, 1.3 * sc);
 
     // Colors matching real fennec: pale sandy body, cream belly/face, pink ear inner
     const sand   = rgb([222, 192, 138].map((c) => c * d)); // main sandy coat
@@ -581,12 +579,10 @@ export function createDesert(canvas) {
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 5000);
-    // 9 o'clock — left edge
-    const angle = Math.PI;
-    const drinkX = cx + Math.cos(angle) * (r + 18);
-    const drinkY = cy + Math.sin(angle) * (ry + 8);
-    const restX  = -20;
-    const restY  = groundY - 60;
+    const drinkX = W * 0.28;
+    const drinkY = groundY + 2;
+    const restX  = -30;
+    const restY  = groundY - 70;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -596,7 +592,7 @@ export function createDesert(canvas) {
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.0 * sc, 2.0 * sc);
+    ctx.scale(1.25 * sc, 1.25 * sc);
 
     const bodyTan  = rgb([188, 155, 90].map((c) => c * d));
     const bodyDark = rgb([95, 68, 30].map((c) => c * d));
@@ -705,12 +701,10 @@ export function createDesert(canvas) {
 
     const ap = approachT(time, 8000);
     const walking = walkFrac(time, 8000);
-    // 1 o'clock — upper-right
-    const angle = -Math.PI * 0.35;
-    const drinkX = cx + Math.cos(angle) * (r + 18);
-    const drinkY = cy + Math.sin(angle) * (ry + 8);
+    const drinkX = W * 0.87;
+    const drinkY = groundY + 2;
     const restX  = W + 60;
-    const restY  = groundY - 50;
+    const restY  = groundY + 30;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -719,7 +713,7 @@ export function createDesert(canvas) {
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.4 * sc, 2.4 * sc); // head at -x → faces left toward pool ✓
+    ctx.scale(1.5 * sc, 1.5 * sc);
 
     const fur    = rgb([168, 148, 105].map((c) => c * d));
     const dark   = rgb([82, 62, 32].map((c) => c * d));
@@ -810,11 +804,9 @@ export function createDesert(canvas) {
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 11000);
-    // 11 o'clock — upper-left
-    const angle = -Math.PI * 0.72;
-    const drinkX = cx + Math.cos(angle) * (r + 20);
-    const drinkY = cy + Math.sin(angle) * (ry + 10) - 20;
-    const restX  = W * 0.1;
+    const drinkX = W * 0.46;
+    const drinkY = groundY - 28;
+    const restX  = W * 0.2;
     const restY  = groundY - 140;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
@@ -825,7 +817,7 @@ export function createDesert(canvas) {
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(1.85 * sc, 1.85 * sc);
+    ctx.scale(1.1 * sc, 1.1 * sc);
 
     const body = rgb([152, 118, 68].map((c) => c * d));
     const dark = rgb([72, 50, 22].map((c) => c * d));
@@ -911,12 +903,10 @@ export function createDesert(canvas) {
 
     const ap = approachT(time, 14000);
     const walking = walkFrac(time, 14000);
-    // 7 o'clock — lower-left
-    const angle = Math.PI * 0.72;
-    const drinkX = cx + Math.cos(angle) * (r + 12);
-    const drinkY = cy + Math.sin(angle) * (ry + 6);
+    const drinkX = W * 0.09;
+    const drinkY = groundY + 4;
     const restX  = -120;
-    const restY  = groundY + 40;
+    const restY  = groundY + 30;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -932,7 +922,7 @@ export function createDesert(canvas) {
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(2.85 * sc, 2.85 * sc); // clearly biggest animal
+    ctx.scale(1.75 * sc, 1.75 * sc);
 
     const fur   = rgb([198, 163, 98].map((c) => c * d));
     const dark  = rgb([138, 105, 55].map((c) => c * d));
