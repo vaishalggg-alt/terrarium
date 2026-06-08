@@ -695,12 +695,12 @@ export function createJungle(canvas) {
     // Head — large circle, offset left and slightly up
     ctx.beginPath(); ctx.arc(-36, -26, 13, 0, TAU); ctx.fill();
 
-    // Ears — triangles rooted on top of the skull, pointing upward
+    // Ears — base on skull top, tip pointing up
     ctx.beginPath();
-    ctx.moveTo(-27, -38); ctx.lineTo(-24, -49); ctx.lineTo(-33, -49);
+    ctx.moveTo(-24, -38); ctx.lineTo(-31, -38); ctx.lineTo(-27, -50);
     ctx.closePath(); ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(-41, -38); ctx.lineTo(-38, -49); ctx.lineTo(-47, -49);
+    ctx.moveTo(-38, -38); ctx.lineTo(-45, -38); ctx.lineTo(-42, -50);
     ctx.closePath(); ctx.fill();
 
     // Bioluminescent rosette markings
