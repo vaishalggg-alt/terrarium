@@ -424,13 +424,15 @@ export function createDesert(canvas) {
   // Cycle offset 0.3 × CYCLE_MS → already near pool at start
   function drawFox(pool, groundY, sky, time) {
     const d = 0.4 + sky.day * 0.6;
-    const { cx, r } = pool;
+    const { cx, cy, r, ry } = pool;
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 2000);
     const walking = walkFrac(time, 2000);
-    const drinkX = cx + r + 14;
-    const drinkY = groundY + 2;
+    // 3 o'clock — right edge
+    const angle = 0;
+    const drinkX = cx + Math.cos(angle) * (r + 14);
+    const drinkY = cy + Math.sin(angle) * (ry + 8);
     const restX  = W + 20;
     const restY  = groundY + 60;
     const bx = lerp(restX, drinkX, ap);
@@ -575,12 +577,14 @@ export function createDesert(canvas) {
   // don't walk. Head raises and lowers toward the water with tongue flick.
   function drawSnake(pool, groundY, sky, time) {
     const d = 0.4 + sky.day * 0.6;
-    const { cx, r } = pool;
+    const { cx, cy, r, ry } = pool;
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 5000);
-    const drinkX = cx - r - 18;
-    const drinkY = groundY + 2;
+    // 9 o'clock — left edge
+    const angle = Math.PI;
+    const drinkX = cx + Math.cos(angle) * (r + 18);
+    const drinkY = cy + Math.sin(angle) * (ry + 8);
     const restX  = -20;
     const restY  = groundY - 60;
     const bx = lerp(restX, drinkX, ap);
@@ -696,13 +700,15 @@ export function createDesert(canvas) {
   // Cycle offset 0.62 × CYCLE_MS
   function drawCoyote(pool, groundY, sky, time) {
     const d = 0.4 + sky.day * 0.6;
-    const { cx, r } = pool;
+    const { cx, cy, r, ry } = pool;
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 8000);
     const walking = walkFrac(time, 8000);
-    const drinkX = cx + r + 70;
-    const drinkY = groundY + 2;
+    // 1 o'clock — upper-right
+    const angle = -Math.PI * 0.35;
+    const drinkX = cx + Math.cos(angle) * (r + 18);
+    const drinkY = cy + Math.sin(angle) * (ry + 8);
     const restX  = W + 60;
     const restY  = groundY - 50;
     const bx = lerp(restX, drinkX, ap);
@@ -800,12 +806,14 @@ export function createDesert(canvas) {
   // Occasionally hops toward the pool. Cycle offset 0.78 × CYCLE_MS.
   function drawOwl(pool, groundY, sky, time) {
     const d = 0.4 + sky.day * 0.6;
-    const { cx, r } = pool;
+    const { cx, cy, r, ry } = pool;
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 11000);
-    const drinkX = cx - r - 20;
-    const drinkY = groundY - 30;
+    // 11 o'clock — upper-left
+    const angle = -Math.PI * 0.72;
+    const drinkX = cx + Math.cos(angle) * (r + 20);
+    const drinkY = cy + Math.sin(angle) * (ry + 10) - 20;
     const restX  = W * 0.1;
     const restY  = groundY - 140;
     const bx = lerp(restX, drinkX, ap);
@@ -898,13 +906,15 @@ export function createDesert(canvas) {
   // Cycle offset 0.0 × CYCLE_MS (starts approaching immediately)
   function drawCamel(pool, groundY, sky, time) {
     const d = 0.4 + sky.day * 0.6;
-    const { cx, r } = pool;
+    const { cx, cy, r, ry } = pool;
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 14000);
     const walking = walkFrac(time, 14000);
-    const drinkX = clamp(cx - r - 10, 30, W * 0.42);
-    const drinkY = groundY + 4;
+    // 7 o'clock — lower-left
+    const angle = Math.PI * 0.72;
+    const drinkX = cx + Math.cos(angle) * (r + 12);
+    const drinkY = cy + Math.sin(angle) * (ry + 6);
     const restX  = -120;
     const restY  = groundY + 40;
     const bx = lerp(restX, drinkX, ap);
