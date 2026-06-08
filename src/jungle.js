@@ -648,202 +648,63 @@ export function createJungle(canvas) {
     const t = clamp((bio - 0.92) / 0.08, 0, 1);
     if (t <= 0) return;
 
-    const bx = W * 0.67, by = groundY + 2;
+    const bx = W * 0.72;
+    const by = groundY + 2;
     const sc = Math.min(1, W / 420) * 2.6;
     const breathe = Math.sin(time * 0.0008) * 2;
-    const pulse = 0.58 + Math.sin(time * 0.0014) * 0.42;
+    const pulse = 0.6 + Math.sin(time * 0.0015) * 0.4;
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx - 30 * sc, by - 28 * sc, 85, 60, 200, 255, t * pulse * 0.32);
+    drawGlow(bx, by - 20, 55, 80, 220, 255, t * pulse * 0.45);
     ctx.restore();
 
     ctx.save();
     ctx.translate(bx, by + breathe);
     ctx.scale(sc, sc);
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-    const shadow = `rgba(6,12,9,${t * 0.95})`;
-    const fur    = `rgba(16,28,21,${t * 0.90})`;
-    const hilit  = `rgba(22,40,28,${t * 0.80})`;
-    const glow   = `rgba(40,${(200*t)|0},${(220*t)|0},${t * pulse})`;
-    const eyeIce = `rgba(90,${(190*t)|0},${(255*t)|0},${t})`;
+    const silhouette = `rgba(12,22,18,${t * 0.85})`;
+    const glow = `rgba(50,${(200 * t) | 0},${(220 * t) | 0},${t * pulse})`;
+    const eyeGlow = `rgba(80,255,200,${t})`;
 
-    // ── TAIL ─────────────────────────────────────────────────────────
-    ctx.strokeStyle = shadow; ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.moveTo(28, -16);
-    ctx.bezierCurveTo(44, -12, 54, 0, 50, 14);
-    ctx.bezierCurveTo(47, 22, 38, 24, 36, 18); ctx.stroke();
-    ctx.strokeStyle = fur; ctx.lineWidth = 5.5;
-    ctx.beginPath(); ctx.moveTo(28, -16);
-    ctx.bezierCurveTo(44, -12, 54, 0, 50, 14);
-    ctx.bezierCurveTo(47, 22, 38, 24, 36, 18); ctx.stroke();
-
-    // ── BACK LEGS ────────────────────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(16, -10); ctx.bezierCurveTo(20, -2, 24, 8, 22, 0);
-    ctx.lineTo(26, 0); ctx.bezierCurveTo(28, 10, 22, 18, 18, 0);
-    ctx.bezierCurveTo(16, -6, 14, -10, 16, -10); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(10, -8);
-    ctx.bezierCurveTo(16, -2, 18, 8, 14, 0);
-    ctx.bezierCurveTo(16, 4, 18, 14, 12, 0);
-    ctx.bezierCurveTo(8, -4, 7, -8, 10, -8); ctx.fill();
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(22, 1, 6, 3, 0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(14, 1, 5.5, 2.8, 0.1, 0, TAU); ctx.fill();
-
-    // ── BODY ─────────────────────────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-18, -28);
-    ctx.bezierCurveTo(-6, -36, 8, -34, 20, -26);
-    ctx.bezierCurveTo(28, -20, 30, -12, 28, -4);
-    ctx.bezierCurveTo(26, 2, 16, 4, 4, 4);
-    ctx.bezierCurveTo(-6, 4, -16, 2, -22, -6);
-    ctx.bezierCurveTo(-26, -14, -24, -22, -18, -28);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-17, -26);
-    ctx.bezierCurveTo(-6, -33, 8, -31, 19, -24);
-    ctx.bezierCurveTo(26, -18, 28, -10, 26, -3);
-    ctx.bezierCurveTo(24, 2, 15, 3, 3, 3);
-    ctx.bezierCurveTo(-6, 3, -15, 1, -21, -6);
-    ctx.bezierCurveTo(-25, -14, -23, -21, -17, -26);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = hilit; ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(-16, -27);
-    ctx.bezierCurveTo(-5, -35, 8, -33, 19, -25);
-    ctx.bezierCurveTo(27, -19, 29, -11, 26, -4);
-    ctx.stroke();
-
-    // ── FRONT LEGS ───────────────────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-14, -12);
-    ctx.bezierCurveTo(-16, -4, -16, 4, -14, 0);
-    ctx.bezierCurveTo(-12, 6, -14, 12, -18, 0);
-    ctx.bezierCurveTo(-18, -6, -16, -12, -14, -12); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-10, -10);
-    ctx.bezierCurveTo(-12, -2, -12, 6, -10, 0);
-    ctx.bezierCurveTo(-8, 8, -10, 14, -14, 0);
-    ctx.bezierCurveTo(-14, -6, -12, -10, -10, -10); ctx.fill();
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-17, 1, 5, 2.5, 0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(-12, 1, 4.5, 2.5, 0.1, 0, TAU); ctx.fill();
-
-    // ── NECK ─────────────────────────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-18, -28);
-    ctx.bezierCurveTo(-24, -32, -34, -34, -38, -30);
-    ctx.bezierCurveTo(-40, -26, -38, -18, -32, -16);
-    ctx.bezierCurveTo(-26, -14, -20, -16, -18, -20);
-    ctx.bezierCurveTo(-16, -24, -16, -28, -18, -28);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-18, -27);
-    ctx.bezierCurveTo(-24, -31, -33, -33, -37, -29);
-    ctx.bezierCurveTo(-39, -25, -37, -17, -31, -15);
-    ctx.bezierCurveTo(-25, -13, -19, -15, -17, -19);
-    ctx.bezierCurveTo(-15, -23, -15, -27, -18, -27);
-    ctx.closePath(); ctx.fill();
-
-    // ── HEAD ─────────────────────────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-28, -44);
-    ctx.bezierCurveTo(-22, -46, -18, -42, -20, -36);
-    ctx.bezierCurveTo(-18, -30, -18, -24, -22, -20);
-    ctx.bezierCurveTo(-26, -16, -32, -16, -36, -18);
-    ctx.bezierCurveTo(-44, -20, -52, -22, -54, -26);
-    ctx.bezierCurveTo(-54, -30, -46, -34, -40, -34);
-    ctx.bezierCurveTo(-36, -34, -32, -36, -30, -40);
-    ctx.bezierCurveTo(-30, -42, -29, -44, -28, -44);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-29, -42);
-    ctx.bezierCurveTo(-23, -44, -19, -40, -21, -35);
-    ctx.bezierCurveTo(-19, -29, -19, -24, -23, -20);
-    ctx.bezierCurveTo(-27, -16, -33, -16, -37, -18);
-    ctx.bezierCurveTo(-44, -20, -51, -22, -53, -26);
-    ctx.bezierCurveTo(-53, -30, -46, -33, -40, -33);
-    ctx.bezierCurveTo(-36, -33, -32, -35, -30, -39);
-    ctx.bezierCurveTo(-29, -41, -29, -42, -29, -42);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = hilit;
-    ctx.beginPath();
-    ctx.moveTo(-52, -26); ctx.bezierCurveTo(-52, -22, -44, -18, -36, -18);
-    ctx.bezierCurveTo(-32, -18, -28, -20, -28, -24);
-    ctx.bezierCurveTo(-30, -28, -38, -28, -44, -26);
-    ctx.bezierCurveTo(-48, -24, -52, -24, -52, -26); ctx.fill();
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-52, -27, 2.5, 1.8, -0.2, 0, TAU); ctx.fill();
-
-    // ── EARS ─────────────────────────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath();
-    ctx.moveTo(-29, -41); ctx.bezierCurveTo(-25, -52, -20, -55, -18, -50);
-    ctx.bezierCurveTo(-16, -44, -20, -40, -24, -40); ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-44, -38); ctx.bezierCurveTo(-40, -50, -34, -54, -32, -48);
-    ctx.bezierCurveTo(-30, -42, -34, -38, -38, -38); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(22,40,28,${t * 0.7})`;
-    ctx.beginPath();
-    ctx.moveTo(-30, -41); ctx.bezierCurveTo(-27, -50, -22, -52, -21, -47);
-    ctx.bezierCurveTo(-20, -43, -23, -40, -26, -40); ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-43, -39); ctx.bezierCurveTo(-40, -48, -35, -51, -33, -46);
-    ctx.bezierCurveTo(-32, -42, -35, -39, -38, -39); ctx.closePath(); ctx.fill();
-
-    // ── ROSETTE MARKINGS ─────────────────────────────────────────────
-    const mr = rng(99);
-    [
-      [0,-24],[8,-18],[16,-12],[22,-20],[12,-6],
-      [4,-10],[18,-26],[24,-14],[-4,-16],
-    ].forEach(([mx, my]) => {
-      const ms = 2.4 + mr() * 2;
-      ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 0.48, 0, TAU); ctx.fill();
-      ctx.strokeStyle = glow; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.arc(mx, my, ms * 1.55, 0, TAU); ctx.stroke();
-    });
-    [[-34,-26],[-40,-28],[-30,-20],[-44,-24]].forEach(([mx, my]) => {
-      ctx.strokeStyle = glow; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(mx, my, 2.2, 0, TAU); ctx.stroke();
+    // Body silhouette
+    ctx.fillStyle = silhouette;
+    ctx.beginPath(); ctx.ellipse(-4, -14, 24, 13, -0.08, 0, TAU); ctx.fill();
+    // Head
+    ctx.beginPath(); ctx.arc(-28, -22, 13, 0, TAU); ctx.fill();
+    // Tail
+    ctx.strokeStyle = silhouette; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(18, -14);
+    ctx.bezierCurveTo(32, -8, 36, 4, 28, 12); ctx.stroke();
+    // Legs
+    ctx.lineWidth = 5;
+    [[-12, -4, -14, 12], [-6, -4, -4, 12], [6, -4, 8, 12], [14, -4, 12, 12]].forEach(([x1,y1,x2,y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     });
 
-    // ── EYES: wide almond, small ──────────────────────────────────────
-    ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-32, -32, 5.5, 2.2, 0.15, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-42, -32, 5.5, 2.2, 0.15, 0, TAU); ctx.fill();
-    ctx.fillStyle = eyeIce;
-    ctx.beginPath(); ctx.ellipse(-32, -32, 4, 1.6, 0.15, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-42, -32, 4, 1.6, 0.15, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.97)';
-    ctx.beginPath(); ctx.ellipse(-32, -32, 0.8, 1.6, 0.15, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-42, -32, 0.8, 1.6, 0.15, 0, TAU); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,${0.82 * t})`;
-    ctx.beginPath(); ctx.arc(-30.8, -33, 0.7, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(-40.8, -33, 0.7, 0, TAU); ctx.fill();
+    // Bioluminescent rosette markings
+    ctx.fillStyle = glow;
+    const markings = rng(99);
+    [[-10,-18],[-2,-24],[6,-18],[12,-12],[-16,-10],[-4,-12],[4,-8],[16,-6]].forEach(([mx, my]) => {
+      const ms = 2.5 + markings() * 2;
+      ctx.beginPath(); ctx.arc(mx, my, ms, 0, TAU); ctx.fill();
+      ctx.strokeStyle = glow; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.arc(mx, my, ms * 1.8, 0, TAU); ctx.stroke();
+    });
 
-    ctx.restore();
-
-    // Eye glow in world space
+    // Glowing eyes
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx + (-32) * sc, by + breathe + (-32) * sc, 18, 90, 190, 255, t * pulse * 0.75);
-    drawGlow(bx + (-42) * sc, by + breathe + (-32) * sc, 18, 90, 190, 255, t * pulse * 0.75);
+    drawGlow(-24, -25, 16, 80, 255, 200, t * pulse * 0.7);
+    drawGlow(-32, -25, 16, 80, 255, 200, t * pulse * 0.7);
+    ctx.restore();
+    ctx.fillStyle = eyeGlow;
+    ctx.beginPath(); ctx.ellipse(-24, -25, 3.5, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-32, -25, 3.5, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.95)';
+    ctx.beginPath(); ctx.ellipse(-24, -25, 1.2, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-32, -25, 1.2, 2.5, 0.1, 0, TAU); ctx.fill();
+
     ctx.restore();
   }
 
