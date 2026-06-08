@@ -667,43 +667,61 @@ export function createJungle(canvas) {
     const glow = `rgba(50,${(200 * t) | 0},${(220 * t) | 0},${t * pulse})`;
     const eyeGlow = `rgba(80,255,200,${t})`;
 
-    // Body silhouette
-    ctx.fillStyle = silhouette;
-    ctx.beginPath(); ctx.ellipse(-4, -14, 24, 13, -0.08, 0, TAU); ctx.fill();
-    // Head
-    ctx.beginPath(); ctx.arc(-28, -22, 13, 0, TAU); ctx.fill();
-    // Tail
-    ctx.strokeStyle = silhouette; ctx.lineWidth = 7; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(18, -14);
-    ctx.bezierCurveTo(32, -8, 36, 4, 28, 12); ctx.stroke();
-    // Legs
-    ctx.lineWidth = 5;
-    [[-12, -4, -14, 12], [-6, -4, -4, 12], [6, -4, 8, 12], [14, -4, 12, 12]].forEach(([x1,y1,x2,y2]) => {
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // Tail — arcs up behind haunches
+    ctx.strokeStyle = silhouette; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(22, -18);
+    ctx.bezierCurveTo(38, -10, 44, 4, 34, 14);
+    ctx.bezierCurveTo(28, 20, 20, 16, 22, 8); ctx.stroke();
+
+    // Legs — four strokes, back pair slightly behind
+    ctx.strokeStyle = silhouette; ctx.lineWidth = 6;
+    [[14,-6,16,12],[8,-6,10,12],[-4,-4,-2,12],[-10,-4,-12,12]].forEach(([x1,y1,x2,y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
     });
+    // Paws
+    ctx.fillStyle = silhouette;
+    ctx.beginPath(); ctx.ellipse(13, 13, 5, 2.5, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-7, 13, 5, 2.5, 0, 0, TAU); ctx.fill();
+
+    // Body — long lean ellipse tilted slightly, haunches higher than chest
+    ctx.fillStyle = silhouette;
+    ctx.beginPath(); ctx.ellipse(4, -14, 26, 12, -0.12, 0, TAU); ctx.fill();
+
+    // Neck — connects body to head, thicker ellipse
+    ctx.beginPath(); ctx.ellipse(-26, -20, 9, 7, -0.25, 0, TAU); ctx.fill();
+
+    // Head — large circle, offset left and slightly up
+    ctx.beginPath(); ctx.arc(-36, -26, 13, 0, TAU); ctx.fill();
 
     // Bioluminescent rosette markings
-    ctx.fillStyle = glow;
     const markings = rng(99);
-    [[-10,-18],[-2,-24],[6,-18],[12,-12],[-16,-10],[-4,-12],[4,-8],[16,-6]].forEach(([mx, my]) => {
+    [[2,-18],[10,-14],[18,-10],[20,-22],[10,-6],[0,-10],[14,-26],[-2,-6]].forEach(([mx,my]) => {
       const ms = 2.5 + markings() * 2;
+      ctx.fillStyle = glow;
       ctx.beginPath(); ctx.arc(mx, my, ms, 0, TAU); ctx.fill();
       ctx.strokeStyle = glow; ctx.lineWidth = 0.8;
       ctx.beginPath(); ctx.arc(mx, my, ms * 1.8, 0, TAU); ctx.stroke();
+    });
+    // Head spots
+    [[-30,-22],[-38,-28],[-42,-22],[-34,-30]].forEach(([mx,my]) => {
+      ctx.strokeStyle = glow; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.arc(mx, my, 2, 0, TAU); ctx.stroke();
     });
 
     // Glowing eyes
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(-24, -25, 16, 80, 255, 200, t * pulse * 0.7);
-    drawGlow(-32, -25, 16, 80, 255, 200, t * pulse * 0.7);
+    drawGlow(-30, -28, 16, 80, 255, 200, t * pulse * 0.7);
+    drawGlow(-40, -28, 16, 80, 255, 200, t * pulse * 0.7);
     ctx.restore();
     ctx.fillStyle = eyeGlow;
-    ctx.beginPath(); ctx.ellipse(-24, -25, 3.5, 2.5, 0.1, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-32, -25, 3.5, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-30, -28, 3.5, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-40, -28, 3.5, 2.5, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.95)';
-    ctx.beginPath(); ctx.ellipse(-24, -25, 1.2, 2.5, 0.1, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-32, -25, 1.2, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-30, -28, 1.2, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-40, -28, 1.2, 2.5, 0.1, 0, TAU); ctx.fill();
 
     ctx.restore();
   }
