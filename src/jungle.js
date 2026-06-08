@@ -807,19 +807,19 @@ export function createJungle(canvas) {
       ctx.beginPath(); ctx.arc(mx, my, 1.8, 0, TAU); ctx.stroke();
     });
 
-    // ── EYES: small, sharp, ice-blue with slit pupils ─────────────────
+    // ── EYES: wide almond-shaped, small, ice-blue with slit pupils ────
     ctx.fillStyle = shadow;
-    ctx.beginPath(); ctx.ellipse(-6, -74, 4.5, 3.5, 0.1, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(6, -74, 4.5, 3.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-6, -74, 5, 2.2, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -74, 5, 2.2, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = eyeIce;
-    ctx.beginPath(); ctx.ellipse(-6, -74, 3.2, 2.5, 0.1, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(6, -74, 3.2, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-6, -74, 3.8, 1.6, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -74, 3.8, 1.6, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.97)';
-    ctx.beginPath(); ctx.ellipse(-6, -74, 0.9, 2.5, 0.1, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(6, -74, 0.9, 2.5, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-6, -74, 0.7, 1.6, 0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -74, 0.7, 1.6, 0.1, 0, TAU); ctx.fill();
     ctx.fillStyle = `rgba(255,255,255,${0.82 * t})`;
-    ctx.beginPath(); ctx.arc(-4.8, -75.4, 0.8, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(7.2, -75.4, 0.8, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(-4.8, -75, 0.7, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(7.2, -75, 0.7, 0, TAU); ctx.fill();
 
     ctx.restore();
 
