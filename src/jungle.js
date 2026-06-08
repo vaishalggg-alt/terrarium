@@ -695,6 +695,10 @@ export function createJungle(canvas) {
     // Head — large circle, offset left and slightly up
     ctx.beginPath(); ctx.arc(-36, -26, 13, 0, TAU); ctx.fill();
 
+    // Ears — small rounded bumps on top of skull
+    ctx.beginPath(); ctx.arc(-29, -38, 5, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(-41, -37, 5, Math.PI, 0); ctx.closePath(); ctx.fill();
+
     // Bioluminescent rosette markings
     const markings = rng(99);
     [[2,-18],[10,-14],[18,-10],[20,-22],[10,-6],[0,-10],[14,-26],[-2,-6]].forEach(([mx,my]) => {
