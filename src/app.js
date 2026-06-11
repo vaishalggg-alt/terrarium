@@ -372,7 +372,7 @@ function VolcanoCheckIn({ onDone }) {
       ${[1,2,3,4,5].map((v) => html`
         <button key=${v}
           class=${'volt-btn' + (stress === v ? ' on' : '')}
-          style=${'--c:#d94030'}
+          style=${{ '--c': '#d94030' }}
           onClick=${() => setStress(v)}>
           <span class="volt-num">${v}</span>
           <span class="volt-lbl">${stressLabels[v-1]}</span>
@@ -384,7 +384,7 @@ function VolcanoCheckIn({ onDone }) {
       ${[1,2,3,4,5].map((v) => html`
         <button key=${v}
           class=${'volt-btn' + (exercise === v ? ' on' : '')}
-          style=${'--c:#3a9060'}
+          style=${{ '--c': '#3a9060' }}
           onClick=${() => setExercise(v)}>
           <span class="volt-num">${v}</span>
           <span class="volt-lbl">${exLabels[v-1]}</span>
