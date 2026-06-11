@@ -241,6 +241,15 @@ export function createVolcano(canvas) {
       { sx: peakX + craterHalf * 0.6, sy: craterY + 4, cx: W * 0.69, cy: H * 0.43, ex: W * 0.80, ey: groundY },
     ];
 
+    // Evaluate quadratic bezier at t
+    function bezier(ch, t) {
+      const mt = 1 - t;
+      return {
+        x: mt * mt * ch.sx + 2 * mt * t * ch.cx + t * t * ch.ex,
+        y: mt * mt * ch.sy + 2 * mt * t * ch.cy + t * t * ch.ey,
+      };
+    }
+
     for (const ch of channels) {
       if (!isErupting) {
         ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
@@ -267,28 +276,59 @@ export function createVolcano(canvas) {
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(ch.sx, ch.sy);
       ctx.quadraticCurveTo(ch.cx, ch.cy, ch.ex, ch.ey); ctx.stroke();
+
+      // Animated lava drip blobs — 4 per channel staggered in phase
+      const DRIPS = 4;
+      const speed = beautiful ? 0.00038 : 0.00025;
+      for (let d = 0; d < DRIPS; d++) {
+        const phase = (time * speed + d / DRIPS) % 1;
+        const { x, y } = bezier(ch, phase);
+        // Colour: white-yellow at top cooling to dark red at base
+        const r2 = (255) | 0;
+        const g2 = beautiful
+          ? ((1 - phase) * 230 + phase * 18) | 0
+          : ((1 - phase) * 120 + phase * 10) | 0;
+        const b2 = beautiful
+          ? ((1 - phase) * 80)  | 0
+          : 4;
+        const alpha = 0.82 * (1 - phase * 0.55) * (beautiful ? 1 : 0.85);
+        const radius = (1 - phase * 0.55) * (beautiful ? 6 : 7);
+
+        // Glow halo
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * 2.8);
+        glow.addColorStop(0, `rgba(${r2},${g2},${b2},${alpha * 0.45})`);
+        glow.addColorStop(1, `rgba(${r2},${g2 >> 1},0,0)`);
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(x, y, radius * 2.8, 0, TAU); ctx.fill();
+
+        // Core blob
+        ctx.fillStyle = `rgba(${r2},${g2},${b2},${alpha})`;
+        ctx.beginPath(); ctx.arc(x, y, radius, 0, TAU); ctx.fill();
+      }
     }
   }
 
   // ── crater ──────────────────────────────────────────────────────────────
   function drawCrater(state, day, time) {
-    const { peakX, craterHalf, craterY } = geo();
+    const { peakX, craterHalf, craterY, peakY } = geo();
     const intensity = { dormant: 0.14, simmering: 0.32, pressured: 0.52,
       releasing: 0.78, 'erupting-beautiful': 1.0, 'erupting-dangerous': 0.92 }[state] || 0.3;
-    const pulse = 1 + Math.sin(time * 0.0019) * 0.13;
+    // Minimal pulse — just a gentle shimmer, not a giant growing oval
+    const pulse = 1 + Math.sin(time * 0.0019) * 0.04;
     const cw = craterHalf * 2.1 * pulse;
     const ch = craterHalf * 0.65 * pulse;
 
     const beautiful = state === 'erupting-beautiful' || state === 'releasing';
     const glowRGB = beautiful ? [255, 200, 45] : [255, 55, 10];
 
-    // Outer atmospheric glow
-    const gR = cw * 3.5;
+    // Small local crater glow (not the giant oval)
+    const gR = cw * 1.6;
     const cg = ctx.createRadialGradient(peakX, craterY, 0, peakX, craterY, gR);
-    cg.addColorStop(0, `rgba(${glowRGB.join(',')},${0.52 * intensity})`);
+    cg.addColorStop(0, `rgba(${glowRGB.join(',')},${0.55 * intensity})`);
+    cg.addColorStop(0.5, `rgba(${glowRGB.join(',')},${0.2 * intensity})`);
     cg.addColorStop(1, `rgba(${glowRGB.join(',')},0)`);
     ctx.fillStyle = cg;
-    ctx.beginPath(); ctx.ellipse(peakX, craterY, gR, gR * 0.45, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(peakX, craterY, gR, gR * 0.5, 0, 0, TAU); ctx.fill();
 
     // Molten pool
     const t = (Math.sin(time * 0.0026) + 1) * 0.5;
@@ -304,6 +344,35 @@ export function createVolcano(canvas) {
     }
     ctx.fillStyle = ig;
     ctx.beginPath(); ctx.ellipse(peakX, craterY, cw, ch, 0, 0, TAU); ctx.fill();
+
+    // Eruption fountain column — vertical light beam rising above crater
+    if (state === 'erupting-beautiful' || state === 'erupting-dangerous' || state === 'releasing') {
+      const flicker = 0.75 + Math.sin(time * 0.0041) * 0.18 + Math.sin(time * 0.0073) * 0.07;
+      const columnH = beautiful
+        ? H * (0.28 + Math.sin(time * 0.0029) * 0.06) * flicker
+        : H * (0.18 + Math.sin(time * 0.0033) * 0.04) * flicker;
+      const colW = cw * (beautiful ? 0.55 : 0.42);
+      const topY = craterY - columnH;
+      const colk = beautiful ? [255, 230, 80] : [255, 80, 15];
+
+      const fg = ctx.createLinearGradient(peakX, craterY, peakX, topY);
+      fg.addColorStop(0,   `rgba(${colk.join(',')},${0.88 * intensity * flicker})`);
+      fg.addColorStop(0.3, `rgba(${colk.join(',')},${0.55 * intensity * flicker})`);
+      fg.addColorStop(0.7, `rgba(${colk[0]},${colk[1] >> 1},0,${0.22 * intensity * flicker})`);
+      fg.addColorStop(1,   `rgba(${colk[0]},0,0,0)`);
+
+      // Tapered column — wide at base, narrows to point
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      ctx.moveTo(peakX - colW, craterY);
+      ctx.quadraticCurveTo(peakX - colW * 0.55, craterY - columnH * 0.5, peakX, topY);
+      ctx.quadraticCurveTo(peakX + colW * 0.55, craterY - columnH * 0.5, peakX + colW, craterY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   // ── particles ────────────────────────────────────────────────────────────
@@ -334,7 +403,7 @@ export function createVolcano(canvas) {
     const beautiful = state === 'erupting-beautiful' || state === 'releasing';
     const dangerous = state === 'erupting-dangerous';
     if (!beautiful && !dangerous) return;
-    const rate = beautiful ? 0.28 : 0.14;
+    const rate = beautiful ? 0.48 : 0.22;
     if (Math.random() > rate || eruptP.length >= 110) return;
     if (beautiful) {
       const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.95;
