@@ -50,7 +50,7 @@ function skyState(date) {
   return { day, top: base.top, bot: base.bot, isNight: day < 0.12 };
 }
 
-export function createOcean(canvas) {
+export function createOcean(canvas, { onBottleClick } = {}) {
   const ctx = canvas.getContext('2d');
   let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
   let letters = [];
@@ -61,6 +61,7 @@ export function createOcean(canvas) {
   let jellies = [];
   let raf = 0;
   let t0 = performance.now();
+  let lastTime = 0;
   let whaleState = { phase: 0.1 };
 
   // ── perspective helpers ──────────────────────────────────────────────────
@@ -85,7 +86,7 @@ export function createOcean(canvas) {
       const isNewest = launchNewest && k === letters.length - 1;
       return {
         fx: 0.15 + r() * 0.70,   // horizontal 0..1
-        fy: 0.12 + r() * 0.60,   // depth 0=near shore, max 0.72 (always visible in distance)
+        fy: 0.38 + r() * 0.38,   // depth: 0.38–0.76, always reaches the mid-ocean light blue
         drift: (r() - 0.5) * 0.005,
         bob: r() * TAU,
         scale: 0.82 + r() * 0.42,
@@ -471,8 +472,22 @@ export function createOcean(canvas) {
 
   // ── frame loop ───────────────────────────────────────────────────────────
 
+  function bottleAt(mx, my) {
+    for (let i = bottles.length - 1; i >= 0; i--) {
+      const b = bottles[i];
+      if (b.launchTime >= 0) continue;
+      const fx = ((b.fx + b.drift * lastTime * 0.0001) % 1 + 1) % 1;
+      const bx = pX(fx, b.fy);
+      const by = pY(b.fy);
+      const hitR = pScale(b.fy) * b.scale * 24;
+      if ((mx - bx) ** 2 + (my - by) ** 2 < hitR ** 2) return i;
+    }
+    return -1;
+  }
+
   function frame(now) {
     const time = now - t0;
+    lastTime = time;
     const sky = skyState(clockDate());
     drawSky(sky);
     drawWater(sky, time);
@@ -483,9 +498,27 @@ export function createOcean(canvas) {
     raf = requestAnimationFrame(frame);
   }
 
+  function toCanvasXY(e) {
+    const rect = canvas.getBoundingClientRect();
+    return [e.clientX - rect.left, e.clientY - rect.top];
+  }
+
+  function onClick(e) {
+    const [mx, my] = toCanvasXY(e);
+    const idx = bottleAt(mx, my);
+    if (idx >= 0) onBottleClick?.(idx, letters[idx]);
+  }
+
+  function onMouseMove(e) {
+    const [mx, my] = toCanvasXY(e);
+    canvas.style.cursor = bottleAt(mx, my) >= 0 ? 'pointer' : '';
+  }
+
   const onResize = () => resize();
   resize();
   window.addEventListener('resize', onResize);
+  canvas.addEventListener('click', onClick);
+  canvas.addEventListener('mousemove', onMouseMove);
   raf = requestAnimationFrame(frame);
 
   return {
@@ -493,6 +526,8 @@ export function createOcean(canvas) {
     destroy() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
+      canvas.removeEventListener('click', onClick);
+      canvas.removeEventListener('mousemove', onMouseMove);
     },
   };
 }

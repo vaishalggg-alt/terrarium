@@ -55,6 +55,12 @@ export function addLetter(text, to = '') {
   return l;
 }
 
+export function removeLetter(id) {
+  state = { ...state, letters: state.letters.filter((l) => l.id !== id) };
+  persist();
+  emit();
+}
+
 export function resetOcean() {
   state = { letters: [] };
   persist();

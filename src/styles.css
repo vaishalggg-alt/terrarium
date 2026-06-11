@@ -50,6 +50,22 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 }
 .clock-toggle:hover { transform: translateY(-2px); }
 
+/* ---- bottle letter modal ---- */
+.bottle-overlay { align-items: flex-end; }
+.bottle-meta { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.bottle-to { font-family: 'Fraunces', serif; font-size: 15px; color: #3a5068; font-style: italic; }
+.bottle-date { font-size: 12px; color: #9aa0aa; }
+.bottle-body {
+  font-size: 15px; line-height: 1.65; color: #2c3040;
+  white-space: pre-wrap; margin: 0 0 22px;
+  padding: 16px; background: #f7f4ee; border-radius: 14px;
+  border-left: 3px solid #b0c8d8;
+  max-height: 38vh; overflow-y: auto;
+}
+.bottle-actions { display: flex; flex-direction: column; gap: 10px; }
+.bottle-take { background: #e8f0f6 !important; color: #3a5068 !important; }
+.bottle-take:hover { filter: brightness(0.96) !important; }
+
 /* ---- discovery banner ---- */
 .discovery {
   position: absolute; top: 76px; left: 50%; transform: translateX(-50%);

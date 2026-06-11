@@ -8,7 +8,7 @@ import {
   addSteps, getSteps, totalSteps, stepsToday,
 } from './store.js';
 import {
-  subscribeOcean, getLetters, addLetter, resetOcean,
+  subscribeOcean, getLetters, addLetter, removeLetter, resetOcean,
   letterStreak, bottledToday, whaleAwakened,
 } from './ocean-store.js';
 import {
@@ -76,9 +76,12 @@ function OceanWorld() {
   const ref = useRef(null);
   const world = useRef(null);
   const letters = useLetters();
+  const [viewing, setViewing] = useState(null); // { letter }
 
   useEffect(() => {
-    world.current = createOcean(ref.current);
+    world.current = createOcean(ref.current, {
+      onBottleClick: (_idx, letter) => letter && setViewing({ letter }),
+    });
     return () => world.current?.destroy();
   }, []);
 
@@ -86,7 +89,31 @@ function OceanWorld() {
     world.current?.setData({ letters, whale: whaleAwakened() });
   }, [letters]);
 
-  return html`<canvas ref=${ref} class="world"></canvas>`;
+  const takeBack = () => {
+    removeLetter(viewing.letter.id);
+    setViewing(null);
+  };
+
+  const fmt = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  return html`
+    <canvas ref=${ref} class="world"></canvas>
+    ${viewing && html`
+      <div class="overlay bottle-overlay" onClick=${() => setViewing(null)}>
+        <div class="sheet" onClick=${(e) => e.stopPropagation()}>
+          <div class="bottle-meta">
+            ${viewing.letter.to && html`<span class="bottle-to">To: ${viewing.letter.to}</span>`}
+            <span class="bottle-date">${fmt(viewing.letter.ts)}</span>
+          </div>
+          <p class="bottle-body">${viewing.letter.text}</p>
+          <div class="bottle-actions">
+            <button class="grow ocean" onClick=${() => setViewing(null)}>Leave it in the sea</button>
+            <button class="grow bottle-take" onClick=${takeBack}>Take it back</button>
+          </div>
+        </div>
+      </div>
+    `}
+  `;
 }
 
 function DesertWorld() {
