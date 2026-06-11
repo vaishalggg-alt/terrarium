@@ -118,7 +118,9 @@ export function createOcean(canvas, { onBottleClick } = {}) {
   }
 
   function setData({ letters: ls, whale: wh }) {
-    const isNew = ls.length > letters.length;
+    // Only animate if a letter was added while ocean was already mounted
+    // (letters.length > 0 guards against the "fresh mount with saved data" case)
+    const isNew = letters.length > 0 && ls.length > letters.length;
     const changed = ls.length !== letters.length;
     letters = ls;
     whale = !!wh;
