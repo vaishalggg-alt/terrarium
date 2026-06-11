@@ -579,7 +579,7 @@ export function createDesert(canvas) {
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 5000);
-    const drinkX = cx - r - 10;
+    const drinkX = cx - r + 5;
     const drinkY = groundY + 2;
     const restX  = -30;
     const restY  = groundY - 70;
@@ -701,7 +701,7 @@ export function createDesert(canvas) {
 
     const ap = approachT(time, 8000);
     const walking = walkFrac(time, 8000);
-    const drinkX = cx + r + 90;
+    const drinkX = cx + r + 130;
     const drinkY = groundY + 2;
     const restX  = W + 60;
     const restY  = groundY + 30;
@@ -804,10 +804,10 @@ export function createDesert(canvas) {
     const sc = Math.min(1, W / 480);
 
     const ap = approachT(time, 11000);
-    const drinkX = cx;
-    const drinkY = groundY - 55;
-    const restX  = cx - r * 0.5;
-    const restY  = groundY - 150;
+    const drinkX = cx + r * 0.3;
+    const drinkY = cy - ry - 18;
+    const restX  = cx + r * 0.3;
+    const restY  = groundY - 200;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -903,7 +903,7 @@ export function createDesert(canvas) {
 
     const ap = approachT(time, 14000);
     const walking = walkFrac(time, 14000);
-    const drinkX = cx - r - 95;
+    const drinkX = cx - r - 140;
     const drinkY = groundY + 4;
     const restX  = -120;
     const restY  = groundY + 30;
