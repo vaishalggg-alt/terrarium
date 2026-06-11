@@ -432,7 +432,7 @@ export function createDesert(canvas) {
     const drinkX = cx + r * 0.5;
     const drinkY = cy - ry - 15;
     const restX  = W + 30;
-    const restY  = groundY - 250;
+    const restY  = cy - ry - 15;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -582,7 +582,7 @@ export function createDesert(canvas) {
     const drinkX = cx - r * 0.5;
     const drinkY = cy - ry - 15;
     const restX  = -80;
-    const restY  = groundY - 250;
+    const restY  = cy - ry - 15;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
@@ -807,7 +807,7 @@ export function createDesert(canvas) {
     const drinkX = cx + r * 0.15;
     const drinkY = cy - ry - 15;
     const restX  = cx + r * 0.15;
-    const restY  = groundY - 300;
+    const restY  = cy - ry - 15;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
