@@ -3,6 +3,9 @@
 //   • Each unsent letter you bottle becomes a glass bottle bobbing on the
 //     waves. Bottles are placed deterministically so the sea is stable across
 //     reloads — letting go is permanent, the sea keeps every one.
+//   • The view is a half-bird's-eye perspective: the shore is at the bottom,
+//     the open ocean stretches away toward the horizon at the top. Bottles
+//     float out into the distance — smaller and higher as they drift further.
 //   • The sky above the waterline runs the same continuous day/night cycle as
 //     the forest, tied to the real clock.
 //   • The more letters you release, the more alive the water gets: a school of
@@ -15,6 +18,7 @@ import { clockDate } from './clock.js';
 const TAU = Math.PI * 2;
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const ease = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 const blend = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 const rgb = (c) => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
 
@@ -27,7 +31,7 @@ function rng(seed) {
   };
 }
 
-// 0..1 daylight + sky palette for the current hour (mirrors the forest sky)
+// 0..1 daylight + sky palette for the current hour
 function skyState(date) {
   const h = date.getHours() + date.getMinutes() / 60;
   let day;
@@ -59,16 +63,13 @@ export function createOcean(canvas) {
   let t0 = performance.now();
   let whaleState = { phase: 0.1 };
 
-  function surfaceY(x, time) {
-    const base = H * 0.42;
-    return base
-      + Math.sin(x * 0.012 + time * 0.0012) * 9
-      + Math.sin(x * 0.026 - time * 0.0019) * 5;
-  }
-  function surfaceSlope(x, time) {
-    return Math.cos(x * 0.012 + time * 0.0012) * 9 * 0.012
-      + Math.cos(x * 0.026 - time * 0.0019) * 5 * 0.026;
-  }
+  // ── perspective helpers ──────────────────────────────────────────────────
+  // d=0: near shore (bottom of water), d=1: far horizon (top of water)
+  function wTop() { return H * 0.40; }
+  function wBot() { return H * 0.84; }
+  function pY(d) { return wBot() - d * (wBot() - wTop()); }
+  function pX(fx, d) { return W * 0.5 + (fx - 0.5) * W * lerp(0.96, 0.18, d); }
+  function pScale(d) { return lerp(1.0, 0.1, d); }
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -83,36 +84,35 @@ export function createOcean(canvas) {
       const r = rng(k + 1);
       const isNewest = launchNewest && k === letters.length - 1;
       return {
-        fx: 0.08 + r() * 0.84,
-        drift: (-0.5 + r()) * 0.06,
+        fx: 0.12 + r() * 0.76,   // horizontal 0..1
+        fy: 0.12 + r() * 0.76,   // depth 0=near shore, 1=horizon
+        drift: (r() - 0.5) * 0.006,
         bob: r() * TAU,
-        scale: 0.85 + r() * 0.4,
+        scale: 0.82 + r() * 0.42,
         tint: r(),
-        // sail-away animation: time when this bottle was released, -1 = already settled
         launchTime: isNewest ? currentTime : -1,
-        // direction it sails: left or right
-        launchDir: r() < 0.5 ? 1 : -1,
       };
     });
   }
 
   function rebuildLife() {
     const n = clamp(letters.length * 2, 0, 34);
+    const WT = wTop(), WB = wBot();
     fish = Array.from({ length: n }, () => {
       const r = Math.random;
       return {
-        x: r() * W, y: surfaceY(0) + 40 + r() * (H - surfaceY(0) - 70),
+        x: r() * W, y: WT + 30 + r() * (WB - WT - 50),
         sp: (0.3 + r() * 0.7) * (r() < 0.5 ? 1 : -1),
         phase: r() * TAU, amp: 4 + r() * 8, s: 4 + r() * 5,
       };
     });
     plankton = Array.from({ length: 70 }, () => {
       const r = Math.random;
-      return { x: r() * W, y: H * 0.45 + r() * H * 0.55, phase: r() * TAU, sp: 0.2 + r() * 0.4, s: 1 + r() * 1.8 };
+      return { x: r() * W, y: WT + 10 + r() * (WB - WT), phase: r() * TAU, sp: 0.2 + r() * 0.4, s: 1 + r() * 1.8 };
     });
     jellies = Array.from({ length: 5 }, () => {
       const r = Math.random;
-      return { x: r() * W, y: H * 0.55 + r() * H * 0.35, phase: r() * TAU, sp: 0.15 + r() * 0.2, s: 10 + r() * 12, rise: 0.1 + r() * 0.15 };
+      return { x: r() * W, y: WT + 50 + r() * (WB - WT - 60), phase: r() * TAU, sp: 0.15 + r() * 0.2, s: 10 + r() * 12, rise: 0.1 + r() * 0.15 };
     });
   }
 
@@ -126,21 +126,21 @@ export function createOcean(canvas) {
     if (changed) rebuildLife();
   }
 
+  // ── sky ──────────────────────────────────────────────────────────────────
+
   function drawSky(sky) {
-    const wl = H * 0.42;
+    const wl = wTop();
     const g = ctx.createLinearGradient(0, 0, 0, wl);
     g.addColorStop(0, rgb(sky.top));
     g.addColorStop(1, rgb(sky.bot));
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, wl + 20);
+    ctx.fillRect(0, 0, W, wl + 10);
 
     if (sky.isNight || sky.day < 0.35) {
       const a = clamp((0.35 - sky.day) / 0.35, 0, 1);
       ctx.fillStyle = `rgba(255,255,255,${0.7 * a})`;
       for (let i = 0; i < 50; i++) {
-        const sx = (i * 137.5) % W;
-        const sy = (i * 71.3) % (wl * 0.8);
-        ctx.fillRect(sx, sy, 1.4, 1.4);
+        ctx.fillRect((i * 137.5) % W, (i * 71.3) % (wl * 0.8), 1.4, 1.4);
       }
       ctx.fillStyle = `rgba(240,240,220,${a})`;
       ctx.beginPath(); ctx.arc(W * 0.76, wl * 0.42, 24, 0, TAU); ctx.fill();
@@ -152,65 +152,92 @@ export function createOcean(canvas) {
       sun.addColorStop(0, `rgba(255,250,220,${0.9 * a})`);
       sun.addColorStop(1, 'rgba(255,250,220,0)');
       ctx.fillStyle = sun;
-      ctx.fillRect(0, 0, W, wl + 20);
+      ctx.fillRect(0, 0, W, wl + 10);
     }
   }
 
+  // ── water ────────────────────────────────────────────────────────────────
+
   function drawWater(sky, time) {
-    const wl = H * 0.42;
+    const WT = wTop(), WB = wBot();
     const d = 0.35 + sky.day * 0.65;
-    const g = ctx.createLinearGradient(0, wl, 0, H);
-    g.addColorStop(0, `rgb(${56 * d},${150 * d},${168 * d})`);
-    g.addColorStop(0.5, `rgb(${28 * d},${96 * d},${140 * d})`);
-    g.addColorStop(1, `rgb(${10 * d},${40 * d},${78 * d})`);
 
-    // wavy top edge
-    ctx.beginPath();
-    ctx.moveTo(0, surfaceY(0, time));
-    for (let x = 0; x <= W; x += 8) ctx.lineTo(x, surfaceY(x, time));
-    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    // Ocean fill — darkens toward horizon (perspective depth cue)
+    const g = ctx.createLinearGradient(0, WT, 0, WB);
+    g.addColorStop(0,   `rgb(${(15 * d) | 0},${(55 * d) | 0},${(100 * d) | 0})`);
+    g.addColorStop(0.45,`rgb(${(32 * d) | 0},${(110 * d) | 0},${(148 * d) | 0})`);
+    g.addColorStop(1,   `rgb(${(54 * d) | 0},${(162 * d) | 0},${(184 * d) | 0})`);
     ctx.fillStyle = g;
-    ctx.fill();
+    ctx.fillRect(0, WT, W, WB - WT);
 
-    // sun/moon glitter band on the surface
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const glint = sky.day > 0.2 ? 'rgba(255,250,210,0.10)' : 'rgba(200,215,255,0.07)';
-    ctx.fillStyle = glint;
-    for (let x = 0; x <= W; x += 14) {
-      const y = surfaceY(x, time);
-      const w = 5 + Math.sin(x * 0.05 + time * 0.004) * 4;
-      ctx.fillRect(x - w / 2, y, w, 2);
+    // Sandy shore strip at bottom
+    const sg = ctx.createLinearGradient(0, WB, 0, H);
+    sg.addColorStop(0,   `rgb(${(190 * d) | 0},${(165 * d) | 0},${(122 * d) | 0})`);
+    sg.addColorStop(0.5, `rgb(${(210 * d) | 0},${(182 * d) | 0},${(138 * d) | 0})`);
+    sg.addColorStop(1,   `rgb(${(222 * d) | 0},${(194 * d) | 0},${(150 * d) | 0})`);
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, WB, W, H - WB);
+
+    // Perspective wave lines — spaced by perspective, bigger amplitude near shore
+    let depth = 0.03;
+    while (depth < 0.99) {
+      const wy = WB - depth * (WB - WT);
+      const amp = lerp(7, 0.6, depth);
+      const alpha = lerp(0.16, 0.04, depth);
+      ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+      ctx.lineWidth = lerp(1.5, 0.4, depth);
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 8) {
+        const wy2 = wy
+          + Math.sin(x * 0.013 + depth * 7 - time * 0.0012) * amp
+          + Math.sin(x * 0.031 + depth * 3 + time * 0.0008) * amp * 0.38;
+        x === 0 ? ctx.moveTo(x, wy2) : ctx.lineTo(x, wy2);
+      }
+      ctx.stroke();
+      // perspective spacing: near waves widely spaced, far waves closely packed
+      depth += lerp(0.085, 0.010, depth);
     }
-    ctx.restore();
 
-    // daytime god-rays under the surface
-    if (sky.day > 0.3) {
+    // Shore foam
+    ctx.strokeStyle = `rgba(255,255,255,${0.38 * d})`;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 8) {
+      const wy = WB
+        + Math.sin(x * 0.022 + time * 0.0022) * 3.5
+        + Math.sin(x * 0.051 - time * 0.0016) * 1.5;
+      x === 0 ? ctx.moveTo(x, wy) : ctx.lineTo(x, wy);
+    }
+    ctx.stroke();
+
+    // Sun glitter band near shore
+    if (sky.day > 0.25) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 5; i++) {
-        const rx = W * (0.2 + i * 0.16) + Math.sin(time * 0.0004 + i) * 30;
-        const ray = ctx.createLinearGradient(rx, wl, rx + 60, H);
-        ray.addColorStop(0, `rgba(255,250,220,${0.06 * sky.day})`);
-        ray.addColorStop(1, 'rgba(255,250,220,0)');
-        ctx.fillStyle = ray;
-        ctx.beginPath();
-        ctx.moveTo(rx - 14, wl); ctx.lineTo(rx + 14, wl);
-        ctx.lineTo(rx + 80, H); ctx.lineTo(rx + 40, H); ctx.closePath();
-        ctx.fill();
+      const glit = lerp(0, 0.09, sky.day);
+      ctx.fillStyle = `rgba(255,250,210,${glit})`;
+      for (let x = 0; x <= W; x += 18) {
+        const wy = WB - 0.06 * (WB - WT) + Math.sin(x * 0.04 + time * 0.004) * 4;
+        const w = 4 + Math.abs(Math.sin(x * 0.06 + time * 0.003)) * 3;
+        ctx.fillRect(x - w / 2, wy, w, 2.5);
       }
       ctx.restore();
     }
   }
 
+  // ── sea life ─────────────────────────────────────────────────────────────
+
   function drawFish(sky, time) {
     const night = sky.day < 0.3;
+    const WT = wTop(), WB = wBot();
     for (const f of fish) {
       f.x += f.sp;
       f.phase += 0.05;
       const y = f.y + Math.sin(f.phase) * f.amp;
       if (f.x > W + 20) f.x = -20;
       if (f.x < -20) f.x = W + 20;
+      if (y < WT + 5 || y > WB - 5) continue;
       const dir = f.sp >= 0 ? 1 : -1;
       ctx.save();
       ctx.translate(f.x, y);
@@ -219,7 +246,7 @@ export function createOcean(canvas) {
         const a = 0.5 + 0.4 * Math.sin(time * 0.005 + f.phase);
         ctx.fillStyle = `rgba(120,220,255,${a})`;
       } else {
-        ctx.fillStyle = 'rgba(20,60,90,0.55)';
+        ctx.fillStyle = 'rgba(20,60,90,0.45)';
       }
       ctx.beginPath();
       ctx.ellipse(0, 0, f.s, f.s * 0.5, 0, 0, TAU);
@@ -235,8 +262,9 @@ export function createOcean(canvas) {
   }
 
   function drawDeepLife(sky, time) {
-    if (sky.day > 0.4) return;              // bioluminescence only in the dark
+    if (sky.day > 0.4) return;
     const a = clamp((0.4 - sky.day) / 0.4, 0, 1);
+    const WT = wTop(), WB = wBot();
 
     for (const p of plankton) {
       p.phase += 0.02 * p.sp;
@@ -248,7 +276,7 @@ export function createOcean(canvas) {
     for (const j of jellies) {
       j.phase += j.sp * 0.03;
       j.y -= j.rise;
-      if (j.y < H * 0.45) j.y = H * 1.02;
+      if (j.y < WT + 20) j.y = WB - 10;
       const pulse = 0.5 + 0.5 * Math.sin(j.phase);
       const x = j.x + Math.sin(j.phase * 0.6) * 12;
       const r = j.s * (0.8 + pulse * 0.3);
@@ -273,105 +301,140 @@ export function createOcean(canvas) {
   function drawWhale(sky, time) {
     whaleState.phase += 0.0014;
     const a = sky.day < 0.4 ? clamp((0.4 - sky.day) / 0.4, 0, 1) : 0.25;
-    const x = W * 0.5 + Math.cos(whaleState.phase) * W * 0.42;
-    const y = H * 0.78 + Math.sin(whaleState.phase * 1.3) * H * 0.08;
+    const WT = wTop(), WB = wBot();
+    // Whale swims in mid-ocean depth
+    const depth = 0.45 + Math.sin(whaleState.phase * 0.7) * 0.12;
+    const x = pX(0.5 + Math.cos(whaleState.phase) * 0.38, depth);
+    const y = pY(depth);
     const dir = Math.sin(whaleState.phase) >= 0 ? 1 : -1;
+    const sc = pScale(depth);
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(dir, 1);
-    const L = W * 0.16;
-    // soft luminous halo
+    ctx.scale(dir * sc, sc);
+    const L = W * 0.18;
     const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, L);
     glow.addColorStop(0, `rgba(140,200,255,${0.22 * a})`);
     glow.addColorStop(1, 'rgba(140,200,255,0)');
     ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(0, 0, L, 0, TAU); ctx.fill();
-    // body
     ctx.fillStyle = `rgba(40,70,110,${0.55 + 0.3 * a})`;
     ctx.beginPath();
     ctx.moveTo(-L * 0.5, 0);
     ctx.quadraticCurveTo(0, -L * 0.32, L * 0.5, 0);
     ctx.quadraticCurveTo(L * 0.62, L * 0.05, L * 0.5, L * 0.16);
     ctx.quadraticCurveTo(0, L * 0.26, -L * 0.5, L * 0.12);
-    // tail flukes
     ctx.quadraticCurveTo(-L * 0.62, L * 0.04, -L * 0.7, -L * 0.12);
     ctx.quadraticCurveTo(-L * 0.55, 0, -L * 0.5, 0);
     ctx.closePath();
     ctx.fill();
-    // bioluminescent dorsal line
     ctx.strokeStyle = `rgba(150,220,255,${0.6 * a})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-L * 0.45, -L * 0.02);
     ctx.quadraticCurveTo(0, -L * 0.22, L * 0.42, -L * 0.02);
     ctx.stroke();
-    // eye
     ctx.fillStyle = `rgba(200,230,255,${a})`;
     ctx.beginPath(); ctx.arc(L * 0.34, L * 0.02, 2.2, 0, TAU); ctx.fill();
     ctx.restore();
   }
 
-  function paintBottleShape(b, sc) {
-    ctx.fillStyle = `rgba(${120 + b.tint * 40},${190 - b.tint * 30},${175 + b.tint * 30},0.55)`;
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+  // ── bottles ───────────────────────────────────────────────────────────────
+
+  // Glass bottle seen from slightly above — oval body, neck, cork, rolled letter inside
+  function paintBottleShape(b) {
+    const glass = `rgba(${(120 + b.tint * 40) | 0},${(190 - b.tint * 30) | 0},${(175 + b.tint * 30) | 0},0.62)`;
+    ctx.strokeStyle = 'rgba(255,255,255,0.48)';
+    ctx.lineWidth = 1;
+
+    // Body
+    ctx.fillStyle = glass;
+    ctx.beginPath();
+    ctx.ellipse(0, 1, 5, 9.5, 0, 0, TAU);
+    ctx.fill(); ctx.stroke();
+
+    // Rolled letter inside (cream paper)
+    ctx.fillStyle = 'rgba(245,238,215,0.88)';
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 3.2, 7.5, 0, 0, TAU);
+    ctx.fill();
+    // Letter lines
+    ctx.strokeStyle = 'rgba(160,130,80,0.4)';
+    ctx.lineWidth = 0.7;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-2.2, i * 1.8 + 1);
+      ctx.lineTo(2.2, i * 1.8 + 1);
+      ctx.stroke();
+    }
+
+    // Neck
+    ctx.fillStyle = glass;
+    ctx.strokeStyle = 'rgba(255,255,255,0.48)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(-5, -10); ctx.lineTo(5, -10); ctx.lineTo(5, 8);
-    ctx.quadraticCurveTo(5, 12, 0, 12);
-    ctx.quadraticCurveTo(-5, 12, -5, 8);
-    ctx.closePath();
+    ctx.ellipse(0, -9, 2.8, 4, 0, 0, TAU);
     ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(150,200,185,0.5)';
-    ctx.fillRect(-2.5, -16, 5, 6);
+
+    // Cork
     ctx.fillStyle = '#b9883f';
-    ctx.fillRect(-2.5, -19, 5, 4);
-    ctx.fillStyle = 'rgba(245,238,215,0.9)';
-    ctx.fillRect(-2.5, -4, 5, 12);
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.beginPath(); ctx.moveTo(-3, -7); ctx.lineTo(-3, 6); ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, -13.5, 2.6, 2.6, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(200,155,80,0.7)';
+    ctx.beginPath();
+    ctx.ellipse(0, -14, 1.4, 1.4, 0, 0, TAU);
+    ctx.fill();
+
+    // Glass highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(-1.8, -1, 1.3, 5, -0.15, 0, TAU);
+    ctx.fill();
   }
 
   function drawBottle(b, time) {
-    const LAUNCH_DURATION = 5000;
+    const LAUNCH_DURATION = 6000;
+    const WT = wTop(), WB = wBot();
+
+    let depth, alpha;
 
     if (b.launchTime >= 0) {
       const elapsed = time - b.launchTime;
-
       if (elapsed < LAUNCH_DURATION) {
-        // sail-away animation: starts near centre, drifts outward, shrinks and fades
-        const progress = elapsed / LAUNCH_DURATION;         // 0 → 1
-        const eased = progress * progress;                  // ease in: slow start, accelerates away
-        const px = W * 0.5 + b.launchDir * eased * W * 0.52;
-        const sc = b.scale * (1 - progress * 0.75);        // shrinks to 25% of original
-        const alpha = 1 - progress * progress;              // fades out quickly toward end
-        const y = surfaceY(px, time) - 6 * sc;
-        const slope = surfaceSlope(px, time);
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.translate(px, y + Math.sin(time * 0.002 + b.bob) * 2 * (1 - progress));
-        ctx.rotate(Math.atan(slope) + Math.PI / 2.1);
-        ctx.scale(sc, sc);
-        paintBottleShape(b, sc);
-        ctx.restore();
-        return; // don't draw in resting position yet
+        const progress = ease(elapsed / LAUNCH_DURATION);
+        depth = lerp(0.02, b.fy, progress);
+        alpha = clamp(elapsed / 400, 0, 1);
       } else {
-        // animation done — mark as settled so it draws normally from now on
         b.launchTime = -1;
+        depth = b.fy;
+        alpha = 1;
       }
+    } else {
+      depth = b.fy;
+      alpha = 1;
     }
 
-    // resting: bob on the water at its permanent position
-    const x = (W * b.fx + b.drift * (time * 0.02)) % (W + 60);
-    const px = x < -30 ? x + W + 60 : x;
-    const y = surfaceY(px, time) - 6 * b.scale;
-    const slope = surfaceSlope(px, time);
+    // Very slow horizontal drift in world space
+    const fx = ((b.fx + b.drift * time * 0.0001) % 1 + 1) % 1;
+
+    const bx = pX(fx, depth);
+    const by = pY(depth);
+    const sc = pScale(depth) * b.scale;
+
+    // Tiny bob: scale pulse since we're looking from above
+    const bob = 1 + Math.sin(time * 0.0018 + b.bob) * 0.04;
+
     ctx.save();
-    ctx.translate(px, y + Math.sin(time * 0.002 + b.bob) * 2);
-    ctx.rotate(Math.atan(slope) + Math.PI / 2.1);
-    ctx.scale(b.scale, b.scale);
-    paintBottleShape(b, b.scale);
+    ctx.globalAlpha = alpha;
+    ctx.translate(bx, by);
+    ctx.scale(sc * bob, sc * bob);
+    // Each bottle has a unique static rotation (they float at different angles)
+    ctx.rotate(b.bob * 0.55);
+    paintBottleShape(b);
     ctx.restore();
   }
+
+  // ── frame loop ───────────────────────────────────────────────────────────
 
   function frame(now) {
     const time = now - t0;
