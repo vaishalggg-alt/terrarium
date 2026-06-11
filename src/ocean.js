@@ -69,7 +69,7 @@ export function createOcean(canvas) {
   function wBot() { return H * 0.84; }
   function pY(d) { return wBot() - d * (wBot() - wTop()); }
   function pX(fx, d) { return W * 0.5 + (fx - 0.5) * W * lerp(0.96, 0.18, d); }
-  function pScale(d) { return lerp(1.0, 0.1, d); }
+  function pScale(d) { return lerp(1.6, 0.18, d); }
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
