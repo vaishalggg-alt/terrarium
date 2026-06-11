@@ -8,7 +8,8 @@ export const BIOMES = [
   { id: 'forest', label: 'Forest', emoji: '🌲' },
   { id: 'ocean', label: 'Ocean', emoji: '🌊' },
   { id: 'desert', label: 'Desert', emoji: '🏜️' },
-  { id: 'jungle', label: 'Jungle', emoji: '🌴' },
+  { id: 'jungle',  label: 'Jungle',  emoji: '🌴' },
+  { id: 'volcano', label: 'Volcano', emoji: '🌋' },
 ];
 
 function load() {

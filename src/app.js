@@ -26,6 +26,11 @@ import { createWorld } from './world.js';
 import { createOcean } from './ocean.js';
 import { createDesert } from './desert.js';
 import { createJungle } from './jungle.js';
+import { createVolcano } from './volcano.js';
+import {
+  subscribeVolcano, getVolcanoLogs, addVolcanoLog, resetVolcano,
+  volcanoState, volcanoLoggedToday, volcanoStreak,
+} from './volcano-store.js';
 
 const html = htm.bind(h);
 
@@ -34,6 +39,7 @@ const useSteps = () => useSyncExternalStore(subscribe, getSteps);
 const useLetters = () => useSyncExternalStore(subscribeOcean, getLetters);
 const useWater = () => useSyncExternalStore(subscribeDesert, getLogs);
 const useSleep = () => useSyncExternalStore(subscribeJungle, getSleepLogs);
+const useVolcanoLogs = () => useSyncExternalStore(subscribeVolcano, getVolcanoLogs);
 const useBiome = () => useSyncExternalStore(subscribeBiome, getBiome);
 const useClock = () => useSyncExternalStore(subscribeClock, getClockMode);
 
@@ -325,6 +331,75 @@ function JungleCheckIn({ onDone }) {
     </div>`;
 }
 
+function VolcanoWorld() {
+  const ref = useRef(null);
+  const world = useRef(null);
+  const logs = useVolcanoLogs();
+
+  useEffect(() => {
+    world.current = createVolcano(ref.current);
+    return () => world.current?.destroy();
+  }, []);
+
+  useEffect(() => {
+    const { pressure, release } = volcanoState();
+    world.current?.setData({ pressure, release });
+  }, [logs]);
+
+  return html`<canvas ref=${ref} class="world"></canvas>`;
+}
+
+function VolcanoCheckIn({ onDone }) {
+  const [stress, setStress] = useState(null);
+  const [exercise, setExercise] = useState(null);
+  const [note, setNote] = useState('');
+
+  const stressLabels = ['Very calm', 'Calm', 'Moderate', 'Stressed', 'Very stressed'];
+  const exLabels     = ['None', 'Light', 'Moderate', 'Active', 'Very active'];
+
+  const submit = () => {
+    if (!stress || !exercise) return;
+    addVolcanoLog(stress, exercise, note);
+    onDone();
+  };
+
+  return html`<div class="sheet">
+    <h2>Pressure & Release</h2>
+    <p class="sub">Log your stress and movement. The volcano finds its own balance.</p>
+
+    <label class="volt-label">Stress level today</label>
+    <div class="volt-scale">
+      ${[1,2,3,4,5].map((v) => html`
+        <button key=${v}
+          class=${'volt-btn' + (stress === v ? ' on' : '')}
+          style=${'--c:#d94030'}
+          onClick=${() => setStress(v)}>
+          <span class="volt-num">${v}</span>
+          <span class="volt-lbl">${stressLabels[v-1]}</span>
+        </button>`)}
+    </div>
+
+    <label class="volt-label">Exercise today</label>
+    <div class="volt-scale">
+      ${[1,2,3,4,5].map((v) => html`
+        <button key=${v}
+          class=${'volt-btn' + (exercise === v ? ' on' : '')}
+          style=${'--c:#3a9060'}
+          onClick=${() => setExercise(v)}>
+          <span class="volt-num">${v}</span>
+          <span class="volt-lbl">${exLabels[v-1]}</span>
+        </button>`)}
+    </div>
+
+    <textarea class="note" placeholder="anything to add? (optional)"
+      value=${note} onInput=${(e) => setNote(e.target.value)} rows="2"></textarea>
+
+    <button class=${'grow volcano' + (!stress || !exercise ? ' off' : '')} onClick=${submit}>
+      Feed the volcano →
+    </button>
+  </div>`;
+}
+
 // ---- biome switcher --------------------------------------------------------
 
 function Switcher({ active }) {
@@ -387,7 +462,28 @@ const JUNGLE = {
   resetMsg: 'Clear all sleep logs? The jungle goes dark.',
 };
 
-const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE };
+const VOLCANO = {
+  World: VolcanoWorld,
+  CheckIn: VolcanoCheckIn,
+  logo: '🌋',
+  title: 'Your Volcano',
+  count: (l) => {
+    if (!l.length) return 'dormant — no data yet';
+    const { pressure, release } = volcanoState();
+    const bal = release / (pressure + 0.01);
+    const label = pressure < 0.15 ? 'dormant'
+      : pressure < 0.35 ? 'simmering'
+      : bal >= 0.65 ? 'in balance'
+      : pressure >= 0.62 ? 'erupting'
+      : 'building pressure';
+    return `${l.length} logs · ${label}`;
+  },
+  empty: 'Log your first pressure check',
+  again: (today) => (today ? 'Log again' : 'Log today\'s pressure'),
+  resetMsg: 'Clear all volcano logs? The volcano goes dormant.',
+};
+
+const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, volcano: VOLCANO };
 
 // ---- app -------------------------------------------------------------------
 
@@ -414,6 +510,7 @@ function App() {
   const letters = useLetters();
   const logs = useWater();
   const sleepLogs = useSleep();
+  const vLogs = useVolcanoLogs();
   const [open, setOpen] = useState(false);
 
   const clock = useClock();
@@ -421,15 +518,18 @@ function App() {
   const items = biome === 'forest' ? checkins
     : biome === 'ocean' ? letters
     : biome === 'desert' ? logs
-    : sleepLogs;
+    : biome === 'jungle' ? sleepLogs
+    : vLogs;
   const streak = biome === 'forest' ? checkinStreak()
     : biome === 'ocean' ? letterStreak()
     : biome === 'desert' ? hydrationStreak()
-    : sleepStreak();
+    : biome === 'jungle' ? sleepStreak()
+    : volcanoStreak();
   const today = biome === 'forest' ? checkedInToday()
     : biome === 'ocean' ? bottledToday()
     : biome === 'desert' ? wateredToday()
-    : sleptToday();
+    : biome === 'jungle' ? sleptToday()
+    : volcanoLoggedToday();
 
   const dom = biome === 'forest' ? dominantEmotion() : null;
   const moth = biome === 'forest' && mothAwakened();
@@ -442,7 +542,8 @@ function App() {
     if (biome === 'forest') resetWorld();
     else if (biome === 'ocean') resetOcean();
     else if (biome === 'desert') resetDesert();
-    else resetJungle();
+    else if (biome === 'jungle') resetJungle();
+    else resetVolcano();
   }
 
   return html`
@@ -479,6 +580,14 @@ function App() {
       ${biome === 'jungle' && bio >= BIO_THRESHOLDS.frog && bio < BIO_THRESHOLDS.butterfly && html`<div class="discovery">🐸 A bioluminescent frog emerges from the undergrowth — your sleep is improving.</div>`}
       ${biome === 'jungle' && bio >= BIO_THRESHOLDS.firefly && bio < BIO_THRESHOLDS.frog && html`<div class="discovery">✨ Fireflies drift through the dark — rest more to awaken deeper life.</div>`}
 
+      ${biome === 'volcano' && (() => {
+        const { pressure, release } = volcanoState();
+        const bal = release / (pressure + 0.01);
+        if (pressure >= 0.62 && bal >= 0.52) return html`<div class="discovery">🌋 Your effort matched your pressure — the volcano erupts beautifully. A controlled release.</div>`;
+        if (pressure >= 0.62) return html`<div class="discovery">⚠️ High pressure with little release. Move your body to help the volcano find balance.</div>`;
+        if (pressure >= 0.35 && bal >= 0.68) return html`<div class="discovery">✨ Stress and movement in balance — the volcano glows steadily without danger.</div>`;
+        return null;
+      })()}
       ${biome === 'jungle' && html`<${SoundBar} />`}
       <${Switcher} active=${biome} />
 

@@ -232,7 +232,24 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 .sqbtn.on { border-color: #4db87a; background: #d8f0e4; }
 .sqico { font-size: 24px; }
 .sqlbl { font-size: 11.5px; font-weight: 700; color: #4c4f57; }
-.grow.jungle { background: #2d5a3d; color: #b8f0c8; }
+.grow.jungle   { background: #2d5a3d; color: #b8f0c8; }
+.grow.volcano  { background: #c03820; color: #fff4f0; }
+
+/* ---- volcano check-in scales ---- */
+.volt-label { display: block; font-weight: 700; font-size: 13px; color: #666; margin: 16px 0 8px; }
+.volt-scale { display: flex; gap: 5px; margin-bottom: 4px; }
+.volt-btn {
+  flex: 1; padding: 10px 3px 8px; border-radius: 12px;
+  border: 1.5px solid #ddd; background: #f7f5f0;
+  cursor: pointer; text-align: center;
+  display: flex; flex-direction: column; gap: 3px; align-items: center;
+  transition: all .14s;
+}
+.volt-btn:hover { transform: translateY(-1px); }
+.volt-btn .volt-num { font-size: 15px; font-weight: 800; color: #444; }
+.volt-btn .volt-lbl { font-size: 9.5px; color: #888; line-height: 1.2; }
+.volt-btn.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, #fff); }
+.volt-btn.on .volt-num { color: var(--c); }
 
 /* ---- sound bar (jungle) ---- */
 .sound-bar {
