@@ -84,9 +84,9 @@ export function createOcean(canvas) {
       const r = rng(k + 1);
       const isNewest = launchNewest && k === letters.length - 1;
       return {
-        fx: 0.12 + r() * 0.76,   // horizontal 0..1
-        fy: 0.12 + r() * 0.76,   // depth 0=near shore, 1=horizon
-        drift: (r() - 0.5) * 0.006,
+        fx: 0.15 + r() * 0.70,   // horizontal 0..1
+        fy: 0.12 + r() * 0.60,   // depth 0=near shore, max 0.72 (always visible in distance)
+        drift: (r() - 0.5) * 0.005,
         bob: r() * TAU,
         scale: 0.82 + r() * 0.42,
         tint: r(),
@@ -393,7 +393,7 @@ export function createOcean(canvas) {
   }
 
   function drawBottle(b, time) {
-    const LAUNCH_DURATION = 6000;
+    const LAUNCH_DURATION = 11000; // 11s drift out to sea
     const WT = wTop(), WB = wBot();
 
     let depth, alpha;
@@ -401,9 +401,10 @@ export function createOcean(canvas) {
     if (b.launchTime >= 0) {
       const elapsed = time - b.launchTime;
       if (elapsed < LAUNCH_DURATION) {
-        const progress = ease(elapsed / LAUNCH_DURATION);
-        depth = lerp(0.02, b.fy, progress);
-        alpha = clamp(elapsed / 400, 0, 1);
+        // ease-in: starts slow near shore, accelerates as wind catches it
+        const progress = Math.pow(elapsed / LAUNCH_DURATION, 0.7);
+        depth = lerp(0.01, b.fy, progress);
+        alpha = clamp(elapsed / 300, 0, 1);
       } else {
         b.launchTime = -1;
         depth = b.fy;
@@ -414,23 +415,57 @@ export function createOcean(canvas) {
       alpha = 1;
     }
 
-    // Very slow horizontal drift in world space
     const fx = ((b.fx + b.drift * time * 0.0001) % 1 + 1) % 1;
-
-    const bx = pX(fx, depth);
-    const by = pY(depth);
     const sc = pScale(depth) * b.scale;
 
-    // Tiny bob: scale pulse since we're looking from above
-    const bob = 1 + Math.sin(time * 0.0018 + b.bob) * 0.04;
+    // Bobbing: y oscillation + rocking, both shrink with distance
+    const bobAmp   = lerp(5.5, 0.4, depth);
+    const rockAmp  = lerp(0.20, 0.015, depth);
+    const bobY     = Math.sin(time * 0.0016 + b.bob) * bobAmp
+                   + Math.sin(time * 0.0027 + b.bob * 1.6) * bobAmp * 0.35;
+    const rock     = Math.sin(time * 0.0011 + b.bob * 1.3) * rockAmp;
+
+    const bx = pX(fx, depth);
+    const by = pY(depth) + bobY;
 
     ctx.save();
     ctx.globalAlpha = alpha;
+
+    // ── wake ripples (drawn before scaling so they stay world-sized) ────────
+    if (sc > 0.15) {
+      const wakeR    = sc * 28;
+      const wakeAlpha = clamp((sc - 0.15) / 0.4, 0, 1) * 0.38;
+      ctx.save();
+      ctx.translate(bx, by);
+      for (let i = 0; i < 3; i++) {
+        const t = ((time * 0.00042 + b.bob * 0.18 + i * 0.333) % 1);
+        const rr = wakeR * lerp(0.3, 1.0, t);
+        const ra = (1 - t) * wakeAlpha;
+        ctx.strokeStyle = `rgba(255,255,255,${ra})`;
+        ctx.lineWidth = lerp(1.4, 0.3, t);
+        ctx.beginPath();
+        // foreshortened ellipse: wide in x, narrow in y (perspective)
+        ctx.ellipse(0, 0, rr, rr * 0.28, 0, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // ── bottle ────────────────────────────────────────────────────────────
     ctx.translate(bx, by);
-    ctx.scale(sc * bob, sc * bob);
-    // Each bottle has a unique static rotation (they float at different angles)
-    ctx.rotate(b.bob * 0.55);
+    ctx.scale(sc, sc);
+    ctx.rotate(b.bob * 0.55 + rock);
     paintBottleShape(b);
+
+    // Distant glint — tiny bright spark so you can still spot it far away
+    if (sc < 0.35) {
+      const glintA = clamp((0.35 - sc) / 0.25, 0, 1) * 0.9;
+      ctx.fillStyle = `rgba(255,255,255,${glintA})`;
+      ctx.beginPath();
+      ctx.arc(0, -12, 1.4 / sc, 0, TAU);
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 
