@@ -86,7 +86,7 @@ export function createOcean(canvas, { onBottleClick } = {}) {
       const isNewest = launchNewest && k === letters.length - 1;
       return {
         fx: 0.15 + r() * 0.70,   // horizontal 0..1
-        fy: 0.38 + r() * 0.38,   // depth: 0.38–0.76, always reaches the mid-ocean light blue
+        fy: 0.55 + r() * 0.38,   // depth: 0.55–0.93, reaches the dark deep ocean
         drift: (r() - 0.5) * 0.005,
         bob: r() * TAU,
         scale: 0.82 + r() * 0.42,
@@ -394,7 +394,7 @@ export function createOcean(canvas, { onBottleClick } = {}) {
   }
 
   function drawBottle(b, time) {
-    const LAUNCH_DURATION = 11000; // 11s drift out to sea
+    const LAUNCH_DURATION = 4500; // 4.5s drift out to sea
     const WT = wTop(), WB = wBot();
 
     let depth, alpha;
