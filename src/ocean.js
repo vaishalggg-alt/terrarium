@@ -70,7 +70,7 @@ export function createOcean(canvas, { onBottleClick } = {}) {
   function wBot() { return H * 0.84; }
   function pY(d) { return wBot() - d * (wBot() - wTop()); }
   function pX(fx, d) { return W * 0.5 + (fx - 0.5) * W * lerp(0.96, 0.18, d); }
-  function pScale(d) { return lerp(1.6, 0.18, d); }
+  function pScale(d) { return lerp(2.2, 0.22, d); }
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -343,56 +343,130 @@ export function createOcean(canvas, { onBottleClick } = {}) {
 
   // ── bottles ───────────────────────────────────────────────────────────────
 
-  // Glass bottle seen from slightly above — oval body, neck, cork, rolled letter inside
+  // Glass bottle seen from slightly above — proper silhouette with bezier curves
   function paintBottleShape(b) {
-    const glass = `rgba(${(120 + b.tint * 40) | 0},${(190 - b.tint * 30) | 0},${(175 + b.tint * 30) | 0},0.62)`;
-    ctx.strokeStyle = 'rgba(255,255,255,0.48)';
-    ctx.lineWidth = 1;
+    const tint = b.tint;
+    const glassR = (100 + tint * 50) | 0;
+    const glassG = (170 - tint * 20) | 0;
+    const glassB = (160 + tint * 40) | 0;
+    const glass   = `rgba(${glassR},${glassG},${glassB},0.58)`;
+    const glassDk = `rgba(${(glassR * 0.7) | 0},${(glassG * 0.7) | 0},${(glassB * 0.7) | 0},0.72)`;
 
-    // Body
-    ctx.fillStyle = glass;
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 5, 9.5, 0, 0, TAU);
-    ctx.fill(); ctx.stroke();
+    // ── bottle outline (right half mirrored) ──────────────────────────────
+    // Coordinates: y=0 at cork top, bottle hangs downward
+    //   cork top:    y = 0
+    //   neck mouth:  y = 8
+    //   neck base:   y = 22   half-width = 5.5
+    //   shoulder:    y = 30   half-width = 14
+    //   body mid:    y = 44   half-width = 15
+    //   body bottom: y = 58   half-width = 13  (rounded bottom)
+    // Shift so visual center is near y=30 for the bob pivot
+    const YOF = -30; // offset so pivot is at body mid
 
-    // Rolled letter inside (cream paper)
-    ctx.fillStyle = 'rgba(245,238,215,0.88)';
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 3.2, 7.5, 0, 0, TAU);
-    ctx.fill();
-    // Letter lines
-    ctx.strokeStyle = 'rgba(160,130,80,0.4)';
-    ctx.lineWidth = 0.7;
-    for (let i = -2; i <= 2; i++) {
+    function bottlePath() {
       ctx.beginPath();
-      ctx.moveTo(-2.2, i * 1.8 + 1);
-      ctx.lineTo(2.2, i * 1.8 + 1);
-      ctx.stroke();
+      ctx.moveTo(0, YOF + 0); // cork top-center (start left side going right)
+      // Left side — going down
+      ctx.lineTo(-3.8, YOF + 0);   // cork left top
+      ctx.lineTo(-4.2, YOF + 8);   // cork bottom / mouth
+      ctx.lineTo(-5.5, YOF + 11);  // neck top flare
+      ctx.lineTo(-5.0, YOF + 22);  // neck bottom
+      // shoulder curve
+      ctx.bezierCurveTo(-5.5, YOF + 26, -14, YOF + 28, -14.5, YOF + 32);
+      // body
+      ctx.lineTo(-15, YOF + 44);
+      // bottom curve
+      ctx.bezierCurveTo(-14.8, YOF + 56, -10, YOF + 60, 0, YOF + 60);
+      // Right side — mirror going up
+      ctx.bezierCurveTo(10, YOF + 60, 14.8, YOF + 56, 15, YOF + 44);
+      ctx.lineTo(14.5, YOF + 32);
+      ctx.bezierCurveTo(14, YOF + 28, 5.5, YOF + 26, 5.0, YOF + 22);
+      ctx.lineTo(5.5, YOF + 11);
+      ctx.lineTo(4.2, YOF + 8);
+      ctx.lineTo(3.8, YOF + 0);
+      ctx.closePath();
     }
 
-    // Neck
-    ctx.fillStyle = glass;
-    ctx.strokeStyle = 'rgba(255,255,255,0.48)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(0, -9, 2.8, 4, 0, 0, TAU);
-    ctx.fill(); ctx.stroke();
-
-    // Cork
-    ctx.fillStyle = '#b9883f';
-    ctx.beginPath();
-    ctx.ellipse(0, -13.5, 2.6, 2.6, 0, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(200,155,80,0.7)';
-    ctx.beginPath();
-    ctx.ellipse(0, -14, 1.4, 1.4, 0, 0, TAU);
+    // ── glass body fill with gradient ────────────────────────────────────
+    const bodyG = ctx.createLinearGradient(-15, YOF + 30, 15, YOF + 30);
+    bodyG.addColorStop(0,   glassDk);
+    bodyG.addColorStop(0.3, glass);
+    bodyG.addColorStop(0.7, glass);
+    bodyG.addColorStop(1,   glassDk);
+    ctx.fillStyle = bodyG;
+    bottlePath();
     ctx.fill();
 
-    // Glass highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    // ── rolled letter visible through glass ─────────────────────────────
+    // Parchment scroll inside the body
+    ctx.save();
     ctx.beginPath();
-    ctx.ellipse(-1.8, -1, 1.3, 5, -0.15, 0, TAU);
+    ctx.ellipse(0, YOF + 44, 13, 27, 0, 0, TAU); // clip to body area
+    ctx.clip();
+
+    ctx.fillStyle = 'rgba(240,228,196,0.82)';
+    ctx.beginPath();
+    ctx.ellipse(0, YOF + 44, 7.5, 20, 0, 0, TAU);
     ctx.fill();
+    // Slight scroll curl at top
+    ctx.fillStyle = 'rgba(220,205,165,0.9)';
+    ctx.beginPath();
+    ctx.ellipse(0, YOF + 25, 7, 4, 0, 0, TAU);
+    ctx.fill();
+    // Faint writing lines
+    ctx.strokeStyle = 'rgba(140,110,60,0.28)';
+    ctx.lineWidth = 0.9;
+    for (let i = 0; i < 5; i++) {
+      const ly = YOF + 34 + i * 4.5;
+      ctx.beginPath();
+      ctx.moveTo(-5, ly); ctx.lineTo(5, ly);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ── glass outline ────────────────────────────────────────────────────
+    ctx.strokeStyle = 'rgba(255,255,255,0.38)';
+    ctx.lineWidth = 1.2;
+    bottlePath();
+    ctx.stroke();
+
+    // ── highlight streak on left body ────────────────────────────────────
+    const hg = ctx.createLinearGradient(-10, YOF + 28, -10, YOF + 55);
+    hg.addColorStop(0, 'rgba(255,255,255,0.28)');
+    hg.addColorStop(1, 'rgba(255,255,255,0.04)');
+    ctx.fillStyle = hg;
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(-8, YOF + 40, 3.5, 14, -0.15, 0, TAU);
+    // Clip to bottle body so highlight doesn't bleed outside
+    bottlePath();
+    ctx.clip();
+    ctx.beginPath();
+    ctx.ellipse(-8, YOF + 40, 3.5, 14, -0.15, 0, TAU);
+    ctx.fillStyle = hg;
+    ctx.fill();
+    ctx.restore();
+
+    // ── cork ─────────────────────────────────────────────────────────────
+    const corkG = ctx.createLinearGradient(-3.8, YOF, 3.8, YOF + 8);
+    corkG.addColorStop(0, '#c49040');
+    corkG.addColorStop(0.5, '#d9a855');
+    corkG.addColorStop(1, '#a87830');
+    ctx.fillStyle = corkG;
+    ctx.beginPath();
+    ctx.roundRect(-3.8, YOF, 7.6, 8, 1.5);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(90,55,10,0.4)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    // Cork grain lines
+    ctx.strokeStyle = 'rgba(160,100,30,0.35)';
+    ctx.lineWidth = 0.6;
+    for (let i = 1; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-3.4, YOF + i * 2.5); ctx.lineTo(3.4, YOF + i * 2.5);
+      ctx.stroke();
+    }
   }
 
   function drawBottle(b, time) {
@@ -481,7 +555,7 @@ export function createOcean(canvas, { onBottleClick } = {}) {
       const fx = ((b.fx + b.drift * lastTime * 0.0001) % 1 + 1) % 1;
       const bx = pX(fx, b.fy);
       const by = pY(b.fy);
-      const hitR = pScale(b.fy) * b.scale * 24;
+      const hitR = pScale(b.fy) * b.scale * 36;
       if ((mx - bx) ** 2 + (my - by) ** 2 < hitR ** 2) return i;
     }
     return -1;
