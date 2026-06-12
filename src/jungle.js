@@ -656,15 +656,15 @@ export function createJungle(canvas) {
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx, by - 20, 55, 80, 220, 255, t * pulse * 0.45);
+    drawGlow(bx, by - 20, 70, 80, 220, 255, t * pulse * 0.75);
     ctx.restore();
 
     ctx.save();
     ctx.translate(bx, by + breathe);
     ctx.scale(sc, sc);
 
-    const silhouette = `rgba(12,22,18,${t * 0.85})`;
-    const glow = `rgba(50,${(200 * t) | 0},${(220 * t) | 0},${t * pulse})`;
+    const silhouette = `rgba(12,22,18,${t * 0.97})`;
+    const glow = `rgba(50,${(200 * t) | 0},${(220 * t) | 0},${t * Math.max(pulse, 0.85)})`;
     const eyeGlow = `rgba(80,255,200,${t})`;
 
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -721,8 +721,8 @@ export function createJungle(canvas) {
     // Glowing eyes
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(-30, -28, 16, 80, 255, 200, t * pulse * 0.7);
-    drawGlow(-40, -28, 16, 80, 255, 200, t * pulse * 0.7);
+    drawGlow(-30, -28, 18, 80, 255, 200, t * Math.max(pulse, 0.8) * 0.95);
+    drawGlow(-40, -28, 18, 80, 255, 200, t * Math.max(pulse, 0.8) * 0.95);
     ctx.restore();
     ctx.fillStyle = eyeGlow;
     ctx.beginPath(); ctx.ellipse(-30, -28, 3.5, 2.5, 0.1, 0, TAU); ctx.fill();
