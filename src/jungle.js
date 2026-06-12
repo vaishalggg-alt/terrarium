@@ -838,168 +838,218 @@ export function createJungle(canvas) {
     ctx.restore();
   }
 
-  // ── bioluminescent serpent ────────────────────────────────────────────
-  // A long glowing snake winding across the forest floor
+  // ── bioluminescent serpent — coiled, static ───────────────────────────
 
   function drawSerpent(groundY, time) {
     const t = bio >= 0.88 ? 1 : 0;
     if (t <= 0) return;
 
-    const pulse = 0.65 + Math.sin(time * 0.0014) * 0.35;
-    const slither = time * 0.0006;
+    const cx = W * 0.22, cy = groundY - 10;
+    const pulse = 0.70 + Math.sin(time * 0.0014) * 0.30;
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    // Glow trail under the snake
-    for (let i = 0; i < 18; i++) {
-      const u = i / 17;
-      const sx = W * (0.08 + u * 0.55) + Math.sin(slither + u * Math.PI * 2.5) * 28;
-      const sy = groundY - 8 + Math.cos(slither * 0.7 + u * Math.PI) * 12;
-      drawGlow(sx, sy, 14, 30, 255, 160, t * pulse * 0.25 * (1 - Math.abs(u - 0.5) * 0.5));
-    }
+    drawGlow(cx, cy, 38, 30, 220, 130, t * pulse * 0.45);
     ctx.restore();
 
-    // Snake body segments
+    ctx.save();
+    ctx.translate(cx, cy);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const segCount = 24;
-    const pts = [];
-    for (let i = 0; i < segCount; i++) {
-      const u = i / (segCount - 1);
-      pts.push({
-        x: W * (0.08 + u * 0.55) + Math.sin(slither + u * Math.PI * 2.5) * 28,
-        y: groundY - 8 + Math.cos(slither * 0.7 + u * Math.PI) * 12,
-      });
-    }
 
-    // Body outline
+    // Coil — 3 concentric arcs drawn as thick strokes to fake a spiral
+    // Outer coil
     ctx.strokeStyle = `rgba(8,6,22,${t * 0.95})`;
+    ctx.lineWidth = 11;
+    ctx.beginPath(); ctx.arc(0, 4, 22, Math.PI * 0.1, Math.PI * 1.85); ctx.stroke();
+
+    // Middle coil (slightly inset)
     ctx.lineWidth = 9;
-    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-    pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.stroke();
+    ctx.beginPath(); ctx.arc(2, 0, 13, Math.PI * 1.0, Math.PI * 2.7); ctx.stroke();
 
-    // Glowing scale pattern
-    for (let i = 1; i < segCount - 1; i++) {
-      const p = pts[i];
-      const hue = i % 3 === 0 ? [30, 255, 140] : i % 3 === 1 ? [80, 220, 255] : [20, 180, 120];
-      ctx.fillStyle = `rgba(${hue[0]},${hue[1]},${hue[2]},${t * pulse * 0.8})`;
-      ctx.beginPath(); ctx.ellipse(p.x, p.y, 4, 2.5, Math.atan2(pts[i+1].y - pts[i-1].y, pts[i+1].x - pts[i-1].x), 0, TAU);
-      ctx.fill();
-    }
+    // Inner coil
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(1, 2, 5, Math.PI * 0.5, Math.PI * 2.4); ctx.stroke();
 
-    // Head
-    const h = pts[segCount - 1];
-    const h2 = pts[segCount - 2];
-    const hAngle = Math.atan2(h.y - h2.y, h.x - h2.x);
+    // Glowing scale rows on each coil — dots along the arcs
+    const scaleRow = (rx, ry, r, startA, endA, count) => {
+      for (let i = 0; i <= count; i++) {
+        const a = startA + (endA - startA) * (i / count);
+        const sx = rx + Math.cos(a) * r;
+        const sy = ry + Math.sin(a) * r;
+        const hue = i % 2 === 0 ? [30, 255, 140] : [80, 220, 255];
+        ctx.fillStyle = `rgba(${hue[0]},${hue[1]},${hue[2]},${t * pulse * 0.85})`;
+        ctx.beginPath(); ctx.arc(sx, sy, 1.8, 0, TAU); ctx.fill();
+      }
+    };
+    scaleRow(0, 4, 22, Math.PI * 0.1, Math.PI * 1.85, 14);
+    scaleRow(2, 0, 13, Math.PI * 1.0, Math.PI * 2.7,  10);
+    scaleRow(1, 2,  5, Math.PI * 0.5, Math.PI * 2.4,   6);
+
+    // Head resting on top of the coil, facing right
+    const hx = 22, hy = 4;
     ctx.fillStyle = `rgba(8,6,22,${t})`;
-    ctx.beginPath(); ctx.ellipse(h.x, h.y, 7, 5, hAngle, 0, TAU); ctx.fill();
-    // Tongue
+    ctx.beginPath(); ctx.ellipse(hx + 6, hy - 4, 8, 5, -0.3, 0, TAU); ctx.fill();
+    // Jaw/chin underscale
+    ctx.fillStyle = `rgba(20,50,30,${t * 0.8})`;
+    ctx.beginPath(); ctx.ellipse(hx + 7, hy - 2, 7, 3.5, -0.3, 0, TAU); ctx.fill();
+    // Forked tongue
     ctx.strokeStyle = `rgba(255,60,100,${t * 0.9})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(h.x + Math.cos(hAngle) * 7, h.y + Math.sin(hAngle) * 7);
-    ctx.lineTo(h.x + Math.cos(hAngle) * 14 + Math.cos(hAngle + 0.5) * 4, h.y + Math.sin(hAngle) * 14 + Math.sin(hAngle + 0.5) * 4);
-    ctx.moveTo(h.x + Math.cos(hAngle) * 7, h.y + Math.sin(hAngle) * 7);
-    ctx.lineTo(h.x + Math.cos(hAngle) * 14 + Math.cos(hAngle - 0.5) * 4, h.y + Math.sin(hAngle) * 14 + Math.sin(hAngle - 0.5) * 4);
-    ctx.stroke();
-    // Eyes
+    ctx.lineWidth = 1; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(hx + 13, hy - 5);
+    ctx.lineTo(hx + 18, hy - 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hx + 13, hy - 5);
+    ctx.lineTo(hx + 17, hy - 7); ctx.stroke();
+    // Eye
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(h.x - Math.cos(hAngle + 1.1) * 3, h.y - Math.sin(hAngle + 1.1) * 3, 7, 60, 255, 160, t * 0.9);
-    drawGlow(h.x - Math.cos(hAngle - 1.1) * 3, h.y - Math.sin(hAngle - 1.1) * 3, 7, 60, 255, 160, t * 0.9);
+    drawGlow(hx + 5, hy - 6, 6, 60, 255, 160, t * 0.9);
+    ctx.restore();
+    ctx.fillStyle = `rgba(80,255,160,${t})`;
+    ctx.beginPath(); ctx.arc(hx + 5, hy - 6, 1.8, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.95)';
+    ctx.beginPath(); ctx.ellipse(hx + 5, hy - 6, 0.7, 1.8, 0, 0, TAU); ctx.fill();
+
     ctx.restore();
   }
 
-  // ── spirit deer ───────────────────────────────────────────────────────
-  // A translucent forest spirit deer with glowing antlers — appears only
-  // with the best sleep. Ethereal, barely-there presence.
+  // ── spirit deer — static, realistic side silhouette ───────────────────
+  // Drawn as a proper deer in side-profile: long legs, barrel body,
+  // long neck, elongated snout, large ears, branching antlers.
 
   function drawSpiritDeer(groundY, time) {
     const t = bio >= 0.95 ? 1 : 0;
     if (t <= 0) return;
 
-    const bx = W * 0.48;
-    const by = groundY - 2;
-    const sc = Math.min(1, W / 420) * 2.2;
-    const breathe = Math.sin(time * 0.0007) * 1.8;
-    const pulse = 0.55 + Math.sin(time * 0.0011) * 0.45;
-    const drift = Math.sin(time * 0.0003) * W * 0.04;
+    const bx = W * 0.50, by = groundY;
+    const sc = Math.min(1, W / 420) * 3.0;
+    const pulse = 0.60 + Math.sin(time * 0.0011) * 0.40;
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx + drift, by - 35, 80, 160, 240, 255, t * pulse * 0.55);
+    drawGlow(bx, by - sc * 28, 90, 140, 220, 255, t * pulse * 0.50);
     ctx.restore();
 
     ctx.save();
-    ctx.translate(bx + drift, by + breathe);
+    ctx.translate(bx, by);
     ctx.scale(sc, sc);
-    ctx.globalAlpha = t * (0.55 + pulse * 0.35);
 
-    const body    = `rgba(140,200,255,${t * 0.6})`;
-    const bodyDim = `rgba(80,130,200,${t * 0.5})`;
-    const antler  = `rgba(180,240,255,${t * pulse})`;
-    const eyeC    = `rgba(200,255,255,${t})`;
+    const body   = `rgba(100,170,240,${t * 0.75})`;
+    const dim    = `rgba(60,110,190,${t * 0.65})`;
+    const bright = `rgba(160,230,255,${t * pulse})`;
+    const antler = `rgba(180,240,255,${t * (0.6 + pulse * 0.4)})`;
 
-    // Legs — 4 thin lines
-    ctx.strokeStyle = bodyDim; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-    [[-8,0,-10,22],[-4,0,-5,22],[4,0,5,22],[8,0,7,22]].forEach(([x1,y1,x2,y2]) => {
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    // ── legs (4 slender legs with knee joints) ──
+    ctx.strokeStyle = dim; ctx.lineWidth = 2.8; ctx.lineCap = 'round';
+    // Front legs
+    ctx.beginPath(); ctx.moveTo(-4, 0); ctx.lineTo(-5, -12); ctx.lineTo(-4, -26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-1, 0); ctx.lineTo(-2, -12); ctx.lineTo(-1, -26); ctx.stroke();
+    // Hind legs
+    ctx.beginPath(); ctx.moveTo(12, -2); ctx.lineTo(14, -13); ctx.lineTo(12, -26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(15, -2); ctx.lineTo(17, -13); ctx.lineTo(15, -26); ctx.stroke();
+    // Hooves
+    ctx.fillStyle = dim;
+    [[-4,-26],[-1,-26],[12,-26],[15,-26]].forEach(([hx2,hy2]) => {
+      ctx.beginPath(); ctx.ellipse(hx2, hy2, 2.2, 1.2, 0, 0, TAU); ctx.fill();
     });
 
-    // Body
+    // ── body — large horizontal ellipse, haunches slightly higher ──
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(0, -8, 14, 9, -0.1, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -32, 18, 11, 0.08, 0, TAU); ctx.fill();
 
-    // Neck
+    // Belly lighter underside
+    ctx.fillStyle = `rgba(80,130,210,${t * 0.4})`;
+    ctx.beginPath(); ctx.ellipse(6, -27, 14, 5, 0.08, 0, TAU); ctx.fill();
+
+    // ── neck — angled forward and upward ──
     ctx.fillStyle = body;
     ctx.beginPath();
-    ctx.moveTo(-8, -14); ctx.quadraticCurveTo(-14, -22, -12, -30);
-    ctx.lineTo(-6, -30); ctx.quadraticCurveTo(-8, -22, -2, -14);
+    ctx.moveTo(-7, -38);
+    ctx.bezierCurveTo(-10, -46, -16, -52, -14, -58);
+    ctx.lineTo(-9, -57);
+    ctx.bezierCurveTo(-11, -51, -5, -45, -2, -37);
     ctx.closePath(); ctx.fill();
 
-    // Head
-    ctx.beginPath(); ctx.ellipse(-10, -33, 6, 5, -0.2, 0, TAU); ctx.fill();
+    // ── head — elongated snout, wide at skull ──
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(-9, -57);          // base of skull
+    ctx.bezierCurveTo(-14, -62, -16, -67, -20, -68); // forehead curve
+    ctx.bezierCurveTo(-22, -68, -26, -67, -30, -63); // snout top
+    ctx.bezierCurveTo(-32, -60, -30, -57, -28, -56); // nose tip
+    ctx.bezierCurveTo(-24, -55, -18, -55, -14, -56); // lower jaw line
+    ctx.bezierCurveTo(-10, -57, -8, -57, -9, -57);
+    ctx.closePath(); ctx.fill();
 
-    // Ears
-    ctx.fillStyle = bodyDim;
-    ctx.beginPath(); ctx.moveTo(-14,-30); ctx.lineTo(-19,-38); ctx.lineTo(-11,-34); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(-7,-30); ctx.lineTo(-5,-38); ctx.lineTo(-3,-32); ctx.closePath(); ctx.fill();
+    // Nose highlight
+    ctx.fillStyle = dim;
+    ctx.beginPath(); ctx.ellipse(-29, -59, 2, 1.5, -0.3, 0, TAU); ctx.fill();
 
-    // Antlers — branching lines
-    ctx.strokeStyle = antler; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
-    const branch = (x1, y1, x2, y2, depth) => {
-      if (depth === 0) return;
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-      const dx = x2-x1, dy = y2-y1;
-      const len = Math.sqrt(dx*dx+dy*dy) * 0.55;
-      const a = Math.atan2(dy, dx);
-      branch(x2, y2, x2 + Math.cos(a - 0.6)*len, y2 + Math.sin(a - 0.6)*len, depth - 1);
-      branch(x2, y2, x2 + Math.cos(a + 0.4)*len, y2 + Math.sin(a + 0.4)*len, depth - 1);
-    };
-    ctx.lineWidth = 1.8;
-    branch(-9, -37, -13, -48, 3);
-    branch(-7, -37, -3, -48, 3);
+    // Nostril dot
+    ctx.fillStyle = `rgba(6,5,18,${t})`;
+    ctx.beginPath(); ctx.arc(-30, -60, 0.9, 0, TAU); ctx.fill();
 
-    // Eye — glowing dot
-    ctx.fillStyle = eyeC;
-    ctx.beginPath(); ctx.arc(-13, -34, 1.5, 0, TAU); ctx.fill();
-    ctx.save(); ctx.globalCompositeOperation = 'screen';
-    // (already in screen context outside, but we're inside save)
+    // ── large ears — deer ears fan outward ──
+    ctx.fillStyle = body;
+    // Far ear
+    ctx.beginPath();
+    ctx.moveTo(-10, -62);
+    ctx.bezierCurveTo(-8, -70, -4, -76, -5, -74);
+    ctx.bezierCurveTo(-6, -72, -8, -68, -10, -64);
+    ctx.closePath(); ctx.fill();
+    // Near ear
+    ctx.beginPath();
+    ctx.moveTo(-14, -62);
+    ctx.bezierCurveTo(-18, -71, -16, -77, -14, -75);
+    ctx.bezierCurveTo(-13, -73, -13, -68, -14, -64);
+    ctx.closePath(); ctx.fill();
+    // Inner ear glow
+    ctx.fillStyle = `rgba(120,190,255,${t * 0.5})`;
+    ctx.beginPath();
+    ctx.moveTo(-14, -63);
+    ctx.bezierCurveTo(-17, -70, -15, -75, -14, -73);
+    ctx.bezierCurveTo(-13, -71, -13.5, -67, -14, -65);
+    ctx.closePath(); ctx.fill();
+
+    // ── eye ──
+    ctx.fillStyle = bright;
+    ctx.beginPath(); ctx.arc(-19, -63, 2.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.9)';
+    ctx.beginPath(); ctx.arc(-19, -63, 1.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(-18.2, -63.7, 0.5, 0, TAU); ctx.fill();
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    drawGlow(-19, -63, 10, 140, 220, 255, t * 0.8);
     ctx.restore();
 
-    // Particle wisps drifting off body
-    for (let i = 0; i < 6; i++) {
-      const wx = (i * 37.3) % 28 - 14;
-      const wy = -8 + (i * 19.7) % 16 - 8;
-      const wa = ((time * 0.001 + i) % 1);
-      if (wa > 0.7) continue;
-      ctx.globalAlpha = t * (0.7 - wa) * 0.5;
-      ctx.fillStyle = antler;
-      ctx.beginPath(); ctx.arc(wx, wy - wa * 25, 1.5, 0, TAU); ctx.fill();
-    }
+    // ── antlers — explicit branched tines, not recursive ──
+    ctx.strokeStyle = antler; ctx.lineWidth = 2.0; ctx.lineCap = 'round';
+    // Main beam left antler (rises from skull, sweeps back and up)
+    ctx.beginPath(); ctx.moveTo(-12, -64); ctx.bezierCurveTo(-10, -74, -6, -80, -4, -86); ctx.stroke();
+    // Brow tine
+    ctx.beginPath(); ctx.moveTo(-10, -70); ctx.lineTo(-5, -74); ctx.stroke();
+    // Back tine
+    ctx.beginPath(); ctx.moveTo(-7, -78); ctx.lineTo(-1, -82); ctx.stroke();
+    // Crown tines
+    ctx.beginPath(); ctx.moveTo(-4, -86); ctx.lineTo(0, -90); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4, -86); ctx.lineTo(-6, -91); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4, -86); ctx.lineTo(-2, -92); ctx.stroke();
+    // Right antler (mirrored, slightly different)
+    ctx.beginPath(); ctx.moveTo(-10, -64); ctx.bezierCurveTo(-8, -73, -4, -79, -2, -85); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-8, -70); ctx.lineTo(-2, -73); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4, -79); ctx.lineTo(2, -83); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-2, -85); ctx.lineTo(2, -89); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-2, -85); ctx.lineTo(-4, -90); ctx.stroke();
+
+    // Antler glow
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    [[-4,-88],[-2,-85],[-7,-79],[-5,-74]].forEach(([ax,ay]) => {
+      drawGlow(ax, ay, 8, 160, 230, 255, t * pulse * 0.5);
+    });
+    ctx.restore();
 
     ctx.restore();
-    ctx.globalAlpha = 1;
   }
 
   // ── ambient jungle glow ───────────────────────────────────────────────
