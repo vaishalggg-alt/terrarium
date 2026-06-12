@@ -572,6 +572,8 @@ function BlossomWorld() {
 }
 
 function BlossomCheckIn({ onDone }) {
+  const [tab, setTab] = useState('auto');
+  const [minutes, setMinutes] = useState(10);
   const total = totalMinutes();
 
   function begin() {
@@ -579,12 +581,36 @@ function BlossomCheckIn({ onDone }) {
     onDone();
   }
 
+  function submitManual() {
+    addSession(minutes * 60);
+    onDone();
+  }
+
   return html`
     <div class="sheet">
-      <h2>Begin stillness</h2>
-      <p class="sub">Tap start, set your phone down, and go still. The garden grows more peaceful the longer you stay quiet. Any movement stops the timer.</p>
-      ${total > 0 && html`<p class="sub" style=${{ marginBottom: '16px' }}>${total} minutes of stillness so far 🌸</p>`}
-      <button class="grow blossom" onClick=${begin}>Start →</button>
+      <h2>Stillness</h2>
+      <div class="forest-tabs">
+        <button class=${'ftab' + (tab === 'auto' ? ' on' : '')} onClick=${() => setTab('auto')}>⏱ Stopwatch</button>
+        <button class=${'ftab' + (tab === 'manual' ? ' on' : '')} onClick=${() => setTab('manual')}>✏️ Manual</button>
+      </div>
+
+      ${tab === 'auto' && html`
+        <p class="sub">Tap start, set your phone down, and go still. Any movement stops the timer.</p>
+        ${total > 0 && html`<p class="sub" style=${{ marginBottom: '16px' }}>${total} minutes of stillness so far 🌸</p>`}
+        <button class="grow blossom" onClick=${begin}>Start →</button>
+      `}
+
+      ${tab === 'manual' && html`
+        <p class="sub">Already meditated? Log how long you sat.</p>
+        <div class="sleep-hours">
+          <span class="sleep-hours-val">${minutes}m</span>
+          <input type="range" min="1" max="120" step="1"
+            value=${minutes} onInput=${(e) => setMinutes(+e.target.value)} />
+          <span class="sleep-hours-label">minutes</span>
+        </div>
+        ${total > 0 && html`<p class="sub" style=${{ marginBottom: '16px' }}>${total} minutes total 🌸</p>`}
+        <button class="grow blossom" onClick=${submitManual}>Log session →</button>
+      `}
     </div>`;
 }
 
