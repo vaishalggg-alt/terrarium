@@ -31,6 +31,11 @@ import {
   subscribeVolcano, getVolcanoLogs, addVolcanoLog, resetVolcano,
   volcanoState, volcanoLoggedToday, volcanoStreak,
 } from './volcano-store.js';
+import { createTundra } from './tundra.js';
+import {
+  subscribeTundra, getFreezes, addFreeze, thawFreeze, resetTundra,
+  frozenToday, freezeStreak,
+} from './tundra-store.js';
 
 const html = htm.bind(h);
 
@@ -40,6 +45,7 @@ const useLetters = () => useSyncExternalStore(subscribeOcean, getLetters);
 const useWater = () => useSyncExternalStore(subscribeDesert, getLogs);
 const useSleep = () => useSyncExternalStore(subscribeJungle, getSleepLogs);
 const useVolcanoLogs = () => useSyncExternalStore(subscribeVolcano, getVolcanoLogs);
+const useFreezes     = () => useSyncExternalStore(subscribeTundra, getFreezes);
 const useBiome = () => useSyncExternalStore(subscribeBiome, getBiome);
 const useClock = () => useSyncExternalStore(subscribeClock, getClockMode);
 
@@ -400,6 +406,71 @@ function VolcanoCheckIn({ onDone }) {
   </div>`;
 }
 
+function TundraWorld() {
+  const ref = useRef(null);
+  const world = useRef(null);
+  const freezes = useFreezes();
+  const [viewing, setViewing] = useState(null);
+
+  useEffect(() => {
+    world.current = createTundra(ref.current, {
+      onIceClick: (_idx, freeze) => freeze && setViewing({ freeze }),
+    });
+    return () => world.current?.destroy();
+  }, []);
+
+  useEffect(() => {
+    world.current?.setData({ freezes });
+  }, [freezes]);
+
+  const thaw = () => {
+    thawFreeze(viewing.freeze.id);
+    setViewing(null);
+  };
+
+  const fmt = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  return html`
+    <canvas ref=${ref} class="world"></canvas>
+    ${viewing && html`
+      <div class="overlay ice-overlay" onClick=${() => setViewing(null)}>
+        <div class="sheet" onClick=${(e) => e.stopPropagation()}>
+          <div class="ice-meta">
+            <span class="ice-date">Frozen ${fmt(viewing.freeze.ts)}</span>
+          </div>
+          <p class="ice-body">${viewing.freeze.text}</p>
+          <div class="ice-actions">
+            <button class="grow tundra" onClick=${() => setViewing(null)}>Keep it frozen</button>
+            <button class="grow ice-thaw" onClick=${thaw}>Thaw it — I'm ready</button>
+          </div>
+        </div>
+      </div>
+    `}
+  `;
+}
+
+function TundraCheckIn({ onDone }) {
+  const [text, setText] = useState('');
+
+  function submit() {
+    if (!text.trim()) return;
+    addFreeze(text);
+    onDone();
+  }
+
+  return html`
+    <div class="sheet">
+      <h2>Freeze a thought</h2>
+      <p class="sub">Write something you're not ready to face yet. It seals inside ice and waits — no burning, no pressure. Thaw it when you're ready.</p>
+      <textarea class="letter" placeholder="what do you want to freeze away for now…"
+        value=${text} rows=${6}
+        onInput=${(ev) => setText(ev.target.value)}></textarea>
+      <button class=${'grow tundra' + (text.trim() ? '' : ' off')} onClick=${submit}>
+        Seal in ice →
+      </button>
+    </div>`;
+}
+
 // ---- biome switcher --------------------------------------------------------
 
 function Switcher({ active }) {
@@ -483,7 +554,18 @@ const VOLCANO = {
   resetMsg: 'Clear all volcano logs? The volcano goes dormant.',
 };
 
-const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, volcano: VOLCANO };
+const TUNDRA = {
+  World: TundraWorld,
+  CheckIn: TundraCheckIn,
+  logo: '🌨️',
+  title: 'Your Tundra',
+  count: (f) => f.length === 1 ? '1 thought frozen' : `${f.length} thoughts frozen`,
+  empty: 'Freeze your first thought',
+  again: (today) => (today ? 'Freeze another' : 'Freeze a thought'),
+  resetMsg: 'Thaw everything and clear the tundra? All frozen thoughts will be lost.',
+};
+
+const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, volcano: VOLCANO, tundra: TUNDRA };
 
 // ---- app -------------------------------------------------------------------
 
@@ -511,6 +593,7 @@ function App() {
   const logs = useWater();
   const sleepLogs = useSleep();
   const vLogs = useVolcanoLogs();
+  const freezes = useFreezes();
   const [open, setOpen] = useState(false);
 
   const clock = useClock();
@@ -519,16 +602,19 @@ function App() {
     : biome === 'ocean' ? letters
     : biome === 'desert' ? logs
     : biome === 'jungle' ? sleepLogs
+    : biome === 'tundra' ? freezes
     : vLogs;
   const streak = biome === 'forest' ? checkinStreak()
     : biome === 'ocean' ? letterStreak()
     : biome === 'desert' ? hydrationStreak()
     : biome === 'jungle' ? sleepStreak()
+    : biome === 'tundra' ? freezeStreak()
     : volcanoStreak();
   const today = biome === 'forest' ? checkedInToday()
     : biome === 'ocean' ? bottledToday()
     : biome === 'desert' ? wateredToday()
     : biome === 'jungle' ? sleptToday()
+    : biome === 'tundra' ? frozenToday()
     : volcanoLoggedToday();
 
   const dom = biome === 'forest' ? dominantEmotion() : null;
@@ -543,6 +629,7 @@ function App() {
     else if (biome === 'ocean') resetOcean();
     else if (biome === 'desert') resetDesert();
     else if (biome === 'jungle') resetJungle();
+    else if (biome === 'tundra') resetTundra();
     else resetVolcano();
   }
 
