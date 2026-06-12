@@ -313,37 +313,74 @@ export function createVolcano(canvas) {
     const { peakX, craterHalf, craterY, peakY } = geo();
     const intensity = { dormant: 0.14, simmering: 0.32, pressured: 0.52,
       releasing: 0.78, 'erupting-beautiful': 1.0, 'erupting-dangerous': 0.92 }[state] || 0.3;
-    // Minimal pulse — just a gentle shimmer, not a giant growing oval
-    const pulse = 1 + Math.sin(time * 0.0019) * 0.04;
-    const cw = craterHalf * 2.1 * pulse;
-    const ch = craterHalf * 0.65 * pulse;
 
     const beautiful = state === 'erupting-beautiful' || state === 'releasing';
-    const glowRGB = beautiful ? [255, 200, 45] : [255, 55, 10];
+    const d = 0.22 + (time * 0 + 1) * 0; // just use geo dimensions
 
-    // Small local crater glow (not the giant oval)
-    const gR = cw * 1.6;
-    const cg = ctx.createRadialGradient(peakX, craterY, 0, peakX, craterY, gR);
-    cg.addColorStop(0, `rgba(${glowRGB.join(',')},${0.55 * intensity})`);
-    cg.addColorStop(0.5, `rgba(${glowRGB.join(',')},${0.2 * intensity})`);
-    cg.addColorStop(1, `rgba(${glowRGB.join(',')},0)`);
-    ctx.fillStyle = cg;
-    ctx.beginPath(); ctx.ellipse(peakX, craterY, gR, gR * 0.5, 0, 0, TAU); ctx.fill();
+    // Crater is the gap in the volcano peak — draw it as a recessed bowl.
+    // The mountain path already leaves an opening; we fill it with rock walls
+    // then drop a lava pool inside.
 
-    // Molten pool
+    const rimW  = craterHalf * 2.2;   // total crater opening width
+    const rimRy = craterHalf * 0.55;  // foreshortened rim height (perspective oval)
+    const rimY  = craterY;
+
+    // ── outer rock rim (dark jagged ring around the opening) ──────────────
+    const dayBr = 0.22 + (0) * 0.35; // keep consistent with mountain brightness
+    const dangerous = state === 'erupting-dangerous' || state === 'pressured';
+    const rimCol = dangerous ? [38, 10, 8] : [28, 20, 16];
+    ctx.fillStyle = `rgb(${rimCol.join(',')})`;
+    ctx.beginPath();
+    ctx.ellipse(peakX, rimY, rimW + 4, rimRy + 3, 0, 0, TAU);
+    ctx.fill();
+
+    // ── inner shadow — the depth of the bowl ──────────────────────────────
+    const shadowG = ctx.createRadialGradient(peakX, rimY + rimRy * 0.3, 0, peakX, rimY, rimW);
+    shadowG.addColorStop(0,   'rgba(0,0,0,0)');
+    shadowG.addColorStop(0.6, 'rgba(0,0,0,0.18)');
+    shadowG.addColorStop(1,   'rgba(0,0,0,0.55)');
+    ctx.fillStyle = shadowG;
+    ctx.beginPath(); ctx.ellipse(peakX, rimY, rimW, rimRy, 0, 0, TAU); ctx.fill();
+
+    // ── lava pool — sits inside the bowl ──────────────────────────────────
+    const lavaW  = rimW  * 0.72;
+    const lavaRy = rimRy * 0.72;
+    const lavaY  = rimY  + rimRy * 0.18; // slightly below rim centre (depth illusion)
+
     const t = (Math.sin(time * 0.0026) + 1) * 0.5;
-    const ig = ctx.createRadialGradient(peakX, craterY + 2, 0, peakX, craterY, cw);
+    const ig = ctx.createRadialGradient(peakX, lavaY - lavaRy * 0.2, 0, peakX, lavaY, lavaW);
     if (beautiful) {
-      ig.addColorStop(0,   `rgba(255,${(240 + t * 15) | 0},${(130 + t * 80) | 0},${0.96 * intensity})`);
-      ig.addColorStop(0.45,`rgba(255,150,18,${0.88 * intensity})`);
-      ig.addColorStop(1,   `rgba(170,32,4,${0.62 * intensity})`);
+      ig.addColorStop(0,   `rgba(255,${(235 + t * 15) | 0},${(80 + t * 60) | 0},${0.98 * intensity})`);
+      ig.addColorStop(0.45,`rgba(255,140,12,${0.90 * intensity})`);
+      ig.addColorStop(1,   `rgba(160,28,4,${0.70 * intensity})`);
     } else {
-      ig.addColorStop(0,   `rgba(255,${(70 + t * 45) | 0},8,${0.92 * intensity})`);
-      ig.addColorStop(0.5, `rgba(195,18,4,${0.82 * intensity})`);
-      ig.addColorStop(1,   `rgba(95,4,2,${0.60 * intensity})`);
+      ig.addColorStop(0,   `rgba(255,${(60 + t * 40) | 0},6,${0.94 * intensity})`);
+      ig.addColorStop(0.5, `rgba(185,16,4,${0.84 * intensity})`);
+      ig.addColorStop(1,   `rgba(80,4,2,${0.65 * intensity})`);
     }
     ctx.fillStyle = ig;
-    ctx.beginPath(); ctx.ellipse(peakX, craterY, cw, ch, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(peakX, lavaY, lavaW, lavaRy, 0, 0, TAU); ctx.fill();
+
+    // Subtle lava surface shimmer — tiny bright flecks that pulse
+    if (intensity > 0.3) {
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(peakX, lavaY, lavaW, lavaRy, 0, 0, TAU); ctx.clip();
+      for (let i = 0; i < 6; i++) {
+        const fx = peakX + Math.sin(time * 0.0018 + i * 1.05) * lavaW * 0.55;
+        const fy = lavaY + Math.cos(time * 0.0022 + i * 0.8)  * lavaRy * 0.5;
+        const fa = (0.3 + 0.3 * Math.sin(time * 0.004 + i)) * intensity;
+        ctx.fillStyle = `rgba(255,255,200,${fa})`;
+        ctx.beginPath(); ctx.arc(fx, fy, 1.8, 0, TAU); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // ── rim highlight — bright top edge of the near-side crater wall ──────
+    ctx.strokeStyle = `rgba(${dangerous ? '80,28,10' : '65,42,30'},0.7)`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(peakX, rimY, rimW + 4, rimRy + 3, 0, Math.PI * 0.1, Math.PI * 0.9);
+    ctx.stroke();
 
     // Eruption fountain column — vertical light beam rising above crater
     if (state === 'erupting-beautiful' || state === 'erupting-dangerous' || state === 'releasing') {
