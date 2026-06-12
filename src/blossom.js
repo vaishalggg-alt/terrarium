@@ -180,8 +180,8 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
     ctx.fillStyle = gg;
     ctx.fillRect(0, H * 0.60, W, H * 0.40);
 
-    // Raked gravel path — two curved lines meeting in center
-    ctx.strokeStyle = `rgba(200,190,170,${0.18 + peace * 0.12})`;
+    // Raked gravel path
+    ctx.strokeStyle = `rgba(200,190,170,${0.28 + peace * 0.12})`;
     ctx.lineWidth = 1;
     for (let i = 0; i < 5; i++) {
       const offset = (i - 2) * 12;
@@ -193,10 +193,120 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
 
     // Moss patches
     const mr = rng(55);
-    ctx.fillStyle = `rgba(60,100,50,${0.35 + peace * 0.15})`;
-    for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = `rgba(60,100,50,${0.45 + peace * 0.15})`;
+    for (let i = 0; i < 10; i++) {
       const mx = mr() * W, my = H * 0.62 + mr() * H * 0.3, mw = 20 + mr() * 50, mh = 6 + mr() * 14;
       ctx.beginPath(); ctx.ellipse(mx, my, mw, mh, (mr() - 0.5) * 0.8, 0, TAU); ctx.fill();
+    }
+
+    // Stepping stones along the path
+    const sr = rng(77);
+    ctx.fillStyle = `rgba(${(145*d)|0},${(135*d)|0},${(120*d)|0},0.72)`;
+    ctx.strokeStyle = `rgba(${(100*d)|0},${(92*d)|0},${(80*d)|0},0.5)`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      const sx = W * (0.32 + sr() * 0.36);
+      const sy = H * (0.68 + sr() * 0.22);
+      const sw = 14 + sr() * 16, sh = 7 + sr() * 8;
+      ctx.beginPath(); ctx.ellipse(sx, sy, sw, sh, (sr()-0.5)*0.4, 0, TAU);
+      ctx.fill(); ctx.stroke();
+    }
+
+    // Grass tufts at ground edges
+    const gr = rng(33);
+    for (let i = 0; i < 14; i++) {
+      const gx = gr() * W, gy = H * (0.61 + gr() * 0.15);
+      const blades = 3 + Math.floor(gr() * 3);
+      ctx.strokeStyle = `rgba(${(55+gr()*20)*d|0},${(100+gr()*30)*d|0},${(45+gr()*15)*d|0},0.7)`;
+      ctx.lineWidth = 1.2; ctx.lineCap = 'round';
+      for (let b = 0; b < blades; b++) {
+        const bx = gx + (gr()-0.5)*8;
+        const bh = 8 + gr() * 14;
+        ctx.beginPath();
+        ctx.moveTo(bx, gy);
+        ctx.quadraticCurveTo(bx + (gr()-0.5)*6, gy - bh*0.6, bx + (gr()-0.5)*4, gy - bh);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // ── torii gate ────────────────────────────────────────────────────────────
+  function drawTorii(day) {
+    const d = 0.18 + day * 0.35;
+    const gx = W * 0.50, gy = H * 0.56;
+    const gw = W * 0.10, gh = H * 0.11;
+    const postW = W * 0.008;
+
+    const col = `rgba(${(130*d)|0},${(35*d)|0},${(20*d)|0},0.70)`;
+    ctx.fillStyle = col;
+
+    // Two vertical posts
+    ctx.beginPath(); ctx.roundRect(gx - gw*0.5 - postW*0.5, gy - gh*0.1, postW, gh, 1); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(gx + gw*0.5 - postW*0.5, gy - gh*0.1, postW, gh, 1); ctx.fill();
+
+    // Lower crossbeam (kasagi underside)
+    ctx.beginPath(); ctx.roundRect(gx - gw*0.56, gy - gh*0.82, gw*1.12, postW*1.4, 1); ctx.fill();
+
+    // Upper curved crossbeam (kasagi)
+    ctx.beginPath();
+    ctx.moveTo(gx - gw*0.62, gy - gh*0.92);
+    ctx.quadraticCurveTo(gx, gy - gh*1.05, gx + gw*0.62, gy - gh*0.92);
+    ctx.lineTo(gx + gw*0.62, gy - gh*0.86);
+    ctx.quadraticCurveTo(gx, gy - gh*0.98, gx - gw*0.62, gy - gh*0.86);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // ── bamboo ────────────────────────────────────────────────────────────────
+  function drawBamboo(day) {
+    const d = 0.25 + day * 0.55;
+    const stalks = [
+      { x: W*0.06, count: 4, seed: 10 },
+      { x: W*0.12, count: 3, seed: 20 },
+      { x: W*0.88, count: 4, seed: 30 },
+      { x: W*0.94, count: 3, seed: 40 },
+    ];
+    for (const group of stalks) {
+      const r = rng(group.seed);
+      for (let i = 0; i < group.count; i++) {
+        const sx = group.x + (r() - 0.5) * W * 0.06;
+        const sy = H * 0.62;
+        const sh = H * (0.16 + r() * 0.14);
+        const sw = 3 + r() * 2.5;
+        const lean = (r() - 0.5) * 0.12;
+
+        // Stalk
+        ctx.strokeStyle = `rgba(${(62*d)|0},${(105*d)|0},${(48*d)|0},0.82)`;
+        ctx.lineWidth = sw;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.quadraticCurveTo(sx + lean * sh * 0.5, sy - sh * 0.5, sx + lean * sh, sy - sh);
+        ctx.stroke();
+
+        // Node rings
+        ctx.strokeStyle = `rgba(${(48*d)|0},${(82*d)|0},${(38*d)|0},0.65)`;
+        ctx.lineWidth = sw * 0.8;
+        for (let n = 1; n <= 3; n++) {
+          const t = n / 4;
+          const nx = sx + lean * sh * t;
+          const ny = sy - sh * t;
+          ctx.beginPath(); ctx.moveTo(nx - sw, ny); ctx.lineTo(nx + sw, ny); ctx.stroke();
+        }
+
+        // Leaves at top
+        ctx.fillStyle = `rgba(${(55*d)|0},${(115*d)|0},${(45*d)|0},0.75)`;
+        const tx = sx + lean * sh, ty = sy - sh;
+        for (let l = 0; l < 3; l++) {
+          const la = -Math.PI/3 + l * Math.PI/3 + lean;
+          ctx.save();
+          ctx.translate(tx, ty);
+          ctx.rotate(la);
+          ctx.beginPath();
+          ctx.ellipse(0, -12, 3, 14, 0, 0, TAU);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
     }
   }
 
@@ -286,7 +396,7 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
     ctx.fillRect(cx - w * 0.22, by - h * 0.72, w * 0.44, h * 0.64);
 
     // Lantern body (the glowing chamber)
-    const glowA = 0.08 + peace * 0.55;
+    const glowA = 0.30 + peace * 0.45;
     const glowC = `rgba(255,${(180 + peace * 55) | 0},60,${glowA})`;
     ctx.fillStyle = `rgb(${(95*d)|0},${(85*d)|0},${(75*d)|0})`;
     ctx.beginPath(); ctx.roundRect(cx - w * 0.6, by - h * 0.82, w * 1.2, h * 0.28, 3); ctx.fill();
@@ -540,7 +650,9 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
 
     drawSky(peace, day);
     drawMountains(day);
+    drawTorii(day);
     drawGround(peace, day);
+    drawBamboo(day);
     drawTrees(peace, day);
     drawLantern(W * 0.30, H * 0.76, peace, day);
     drawLantern(W * 0.70, H * 0.74, peace, day);
