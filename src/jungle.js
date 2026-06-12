@@ -476,7 +476,7 @@ export function createJungle(canvas) {
   }
 
   function drawMushrooms(groundY, time) {
-    const t = bio >= 0.15 ? 1 : 0;
+    const t = bio >= 0.10 ? 1 : 0;
     if (t <= 0) return;
     const pulse = 0.85 + Math.sin(time * 0.0008) * 0.15;
     const positions = rng(77);
@@ -513,7 +513,7 @@ export function createJungle(canvas) {
   }
 
   function drawOrchids(groundY) {
-    const t = bio >= 0.35 ? 1 : 0;
+    const t = bio >= 0.28 ? 1 : 0;
     if (t <= 0) return;
     const r = rng(44);
     for (let i = 0; i < 12; i++) {
@@ -526,7 +526,7 @@ export function createJungle(canvas) {
   // ── fireflies ─────────────────────────────────────────────────────────
 
   function drawFireflies(time) {
-    const t = bio >= 0.25 ? 1 : 0;
+    const t = bio >= 0.18 ? 1 : 0;
     if (t <= 0 || !fireflies.length) return;
 
     ctx.save();
@@ -553,7 +553,7 @@ export function createJungle(canvas) {
   // pupils, long folded hind legs with webbed toes, tympanum discs.
 
   function drawFrog(groundY, time) {
-    const t = bio >= 0.50 ? 1 : 0;
+    const t = bio >= 0.40 ? 1 : 0;
     if (t <= 0) return;
 
     const bx = W * 0.28, by = groundY - 10;
@@ -687,7 +687,7 @@ export function createJungle(canvas) {
   // ── morpho butterfly ──────────────────────────────────────────────────
 
   function drawButterfly(time) {
-    const t = bio >= 0.75 ? 1 : 0;
+    const t = bio >= 0.60 ? 1 : 0;
     if (t <= 0) return;
 
     // Gentle figure-8 flight path
@@ -749,7 +749,7 @@ export function createJungle(canvas) {
   // Body is a deep barrel with very short legs.
 
   function drawJaguar(groundY, time) {
-    const t = bio >= 0.92 ? 1 : 0;
+    const t = bio >= 0.78 ? 1 : 0;
     if (t <= 0) return;
 
     const bx = W * 0.72;
@@ -838,6 +838,170 @@ export function createJungle(canvas) {
     ctx.restore();
   }
 
+  // ── bioluminescent serpent ────────────────────────────────────────────
+  // A long glowing snake winding across the forest floor
+
+  function drawSerpent(groundY, time) {
+    const t = bio >= 0.88 ? 1 : 0;
+    if (t <= 0) return;
+
+    const pulse = 0.65 + Math.sin(time * 0.0014) * 0.35;
+    const slither = time * 0.0006;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    // Glow trail under the snake
+    for (let i = 0; i < 18; i++) {
+      const u = i / 17;
+      const sx = W * (0.08 + u * 0.55) + Math.sin(slither + u * Math.PI * 2.5) * 28;
+      const sy = groundY - 8 + Math.cos(slither * 0.7 + u * Math.PI) * 12;
+      drawGlow(sx, sy, 14, 30, 255, 160, t * pulse * 0.25 * (1 - Math.abs(u - 0.5) * 0.5));
+    }
+    ctx.restore();
+
+    // Snake body segments
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const segCount = 24;
+    const pts = [];
+    for (let i = 0; i < segCount; i++) {
+      const u = i / (segCount - 1);
+      pts.push({
+        x: W * (0.08 + u * 0.55) + Math.sin(slither + u * Math.PI * 2.5) * 28,
+        y: groundY - 8 + Math.cos(slither * 0.7 + u * Math.PI) * 12,
+      });
+    }
+
+    // Body outline
+    ctx.strokeStyle = `rgba(8,6,22,${t * 0.95})`;
+    ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+
+    // Glowing scale pattern
+    for (let i = 1; i < segCount - 1; i++) {
+      const p = pts[i];
+      const hue = i % 3 === 0 ? [30, 255, 140] : i % 3 === 1 ? [80, 220, 255] : [20, 180, 120];
+      ctx.fillStyle = `rgba(${hue[0]},${hue[1]},${hue[2]},${t * pulse * 0.8})`;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, 4, 2.5, Math.atan2(pts[i+1].y - pts[i-1].y, pts[i+1].x - pts[i-1].x), 0, TAU);
+      ctx.fill();
+    }
+
+    // Head
+    const h = pts[segCount - 1];
+    const h2 = pts[segCount - 2];
+    const hAngle = Math.atan2(h.y - h2.y, h.x - h2.x);
+    ctx.fillStyle = `rgba(8,6,22,${t})`;
+    ctx.beginPath(); ctx.ellipse(h.x, h.y, 7, 5, hAngle, 0, TAU); ctx.fill();
+    // Tongue
+    ctx.strokeStyle = `rgba(255,60,100,${t * 0.9})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(h.x + Math.cos(hAngle) * 7, h.y + Math.sin(hAngle) * 7);
+    ctx.lineTo(h.x + Math.cos(hAngle) * 14 + Math.cos(hAngle + 0.5) * 4, h.y + Math.sin(hAngle) * 14 + Math.sin(hAngle + 0.5) * 4);
+    ctx.moveTo(h.x + Math.cos(hAngle) * 7, h.y + Math.sin(hAngle) * 7);
+    ctx.lineTo(h.x + Math.cos(hAngle) * 14 + Math.cos(hAngle - 0.5) * 4, h.y + Math.sin(hAngle) * 14 + Math.sin(hAngle - 0.5) * 4);
+    ctx.stroke();
+    // Eyes
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    drawGlow(h.x - Math.cos(hAngle + 1.1) * 3, h.y - Math.sin(hAngle + 1.1) * 3, 7, 60, 255, 160, t * 0.9);
+    drawGlow(h.x - Math.cos(hAngle - 1.1) * 3, h.y - Math.sin(hAngle - 1.1) * 3, 7, 60, 255, 160, t * 0.9);
+    ctx.restore();
+  }
+
+  // ── spirit deer ───────────────────────────────────────────────────────
+  // A translucent forest spirit deer with glowing antlers — appears only
+  // with the best sleep. Ethereal, barely-there presence.
+
+  function drawSpiritDeer(groundY, time) {
+    const t = bio >= 0.95 ? 1 : 0;
+    if (t <= 0) return;
+
+    const bx = W * 0.48;
+    const by = groundY - 2;
+    const sc = Math.min(1, W / 420) * 2.2;
+    const breathe = Math.sin(time * 0.0007) * 1.8;
+    const pulse = 0.55 + Math.sin(time * 0.0011) * 0.45;
+    const drift = Math.sin(time * 0.0003) * W * 0.04;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    drawGlow(bx + drift, by - 35, 80, 160, 240, 255, t * pulse * 0.55);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(bx + drift, by + breathe);
+    ctx.scale(sc, sc);
+    ctx.globalAlpha = t * (0.55 + pulse * 0.35);
+
+    const body    = `rgba(140,200,255,${t * 0.6})`;
+    const bodyDim = `rgba(80,130,200,${t * 0.5})`;
+    const antler  = `rgba(180,240,255,${t * pulse})`;
+    const eyeC    = `rgba(200,255,255,${t})`;
+
+    // Legs — 4 thin lines
+    ctx.strokeStyle = bodyDim; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    [[-8,0,-10,22],[-4,0,-5,22],[4,0,5,22],[8,0,7,22]].forEach(([x1,y1,x2,y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // Body
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.ellipse(0, -8, 14, 9, -0.1, 0, TAU); ctx.fill();
+
+    // Neck
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(-8, -14); ctx.quadraticCurveTo(-14, -22, -12, -30);
+    ctx.lineTo(-6, -30); ctx.quadraticCurveTo(-8, -22, -2, -14);
+    ctx.closePath(); ctx.fill();
+
+    // Head
+    ctx.beginPath(); ctx.ellipse(-10, -33, 6, 5, -0.2, 0, TAU); ctx.fill();
+
+    // Ears
+    ctx.fillStyle = bodyDim;
+    ctx.beginPath(); ctx.moveTo(-14,-30); ctx.lineTo(-19,-38); ctx.lineTo(-11,-34); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-7,-30); ctx.lineTo(-5,-38); ctx.lineTo(-3,-32); ctx.closePath(); ctx.fill();
+
+    // Antlers — branching lines
+    ctx.strokeStyle = antler; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    const branch = (x1, y1, x2, y2, depth) => {
+      if (depth === 0) return;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+      const dx = x2-x1, dy = y2-y1;
+      const len = Math.sqrt(dx*dx+dy*dy) * 0.55;
+      const a = Math.atan2(dy, dx);
+      branch(x2, y2, x2 + Math.cos(a - 0.6)*len, y2 + Math.sin(a - 0.6)*len, depth - 1);
+      branch(x2, y2, x2 + Math.cos(a + 0.4)*len, y2 + Math.sin(a + 0.4)*len, depth - 1);
+    };
+    ctx.lineWidth = 1.8;
+    branch(-9, -37, -13, -48, 3);
+    branch(-7, -37, -3, -48, 3);
+
+    // Eye — glowing dot
+    ctx.fillStyle = eyeC;
+    ctx.beginPath(); ctx.arc(-13, -34, 1.5, 0, TAU); ctx.fill();
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    // (already in screen context outside, but we're inside save)
+    ctx.restore();
+
+    // Particle wisps drifting off body
+    for (let i = 0; i < 6; i++) {
+      const wx = (i * 37.3) % 28 - 14;
+      const wy = -8 + (i * 19.7) % 16 - 8;
+      const wa = ((time * 0.001 + i) % 1);
+      if (wa > 0.7) continue;
+      ctx.globalAlpha = t * (0.7 - wa) * 0.5;
+      ctx.fillStyle = antler;
+      ctx.beginPath(); ctx.arc(wx, wy - wa * 25, 1.5, 0, TAU); ctx.fill();
+    }
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   // ── ambient jungle glow ───────────────────────────────────────────────
 
   function drawAmbientGlow(groundY) {
@@ -894,6 +1058,8 @@ export function createJungle(canvas) {
     drawFrog(groundY, time);
     drawButterfly(time);
     drawJaguar(groundY, time);
+    drawSerpent(groundY, time);
+    drawSpiritDeer(groundY, time);
 
     raf = requestAnimationFrame(frame);
   }

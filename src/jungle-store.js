@@ -44,20 +44,25 @@ export function sleepStreak() {
 }
 
 // bioluminescence level 0–1 based on recent sleep data (last 14 entries)
+// Hours weighted heavily (65%) — 9h is the target for full score
 export function bioLevel() {
   const recent = _logs.slice(-14);
   if (!recent.length) return 0;
   const avgQ = recent.reduce((s, l) => s + l.quality, 0) / recent.length; // 1–3
-  const avgH = recent.reduce((s, l) => s + l.hours, 0) / recent.length;   // target 8
-  const qScore = (avgQ - 1) / 2;       // 0–1
-  const hScore = Math.min(avgH / 8, 1); // 0–1
-  return qScore * 0.55 + hScore * 0.45;
+  const avgH = recent.reduce((s, l) => s + l.hours, 0) / recent.length;
+  const qScore = (avgQ - 1) / 2;        // 0–1
+  const hScore = Math.min(avgH / 9, 1); // 0–1, full at 9h
+  return qScore * 0.35 + hScore * 0.65;
 }
 
 // Named thresholds used in app discovery banners
 export const BIO_THRESHOLDS = {
-  firefly:   0.25,
-  frog:      0.50,
-  butterfly: 0.75,
-  jaguar:    0.92,
+  mushroom:   0.10,
+  firefly:    0.18,
+  orchid:     0.28,
+  frog:       0.40,
+  butterfly:  0.60,
+  jaguar:     0.78,
+  snake:      0.88,
+  spiritDeer: 0.95,
 };
