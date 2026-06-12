@@ -373,7 +373,7 @@ export function createJungle(canvas) {
   }
 
   function drawMushrooms(groundY, time) {
-    const t = clamp((bio - 0.15) / 0.35, 0, 1);
+    const t = bio >= 0.15 ? 1 : 0;
     if (t <= 0) return;
     const pulse = 0.85 + Math.sin(time * 0.0008) * 0.15;
     const positions = rng(77);
@@ -410,7 +410,7 @@ export function createJungle(canvas) {
   }
 
   function drawOrchids(groundY) {
-    const t = clamp((bio - 0.35) / 0.30, 0, 1);
+    const t = bio >= 0.35 ? 1 : 0;
     if (t <= 0) return;
     const r = rng(44);
     for (let i = 0; i < 12; i++) {
@@ -423,7 +423,7 @@ export function createJungle(canvas) {
   // ── fireflies ─────────────────────────────────────────────────────────
 
   function drawFireflies(time) {
-    const t = clamp((bio - 0.25) / 0.30, 0, 1);
+    const t = bio >= 0.25 ? 1 : 0;
     if (t <= 0 || !fireflies.length) return;
 
     ctx.save();
@@ -449,7 +449,7 @@ export function createJungle(canvas) {
   // pupils, long folded hind legs with webbed toes, tympanum discs.
 
   function drawFrog(groundY, time) {
-    const t = clamp((bio - 0.50) / 0.25, 0, 1);
+    const t = bio >= 0.50 ? 1 : 0;
     if (t <= 0) return;
 
     const bx = W * 0.28, by = groundY - 10;
@@ -583,7 +583,7 @@ export function createJungle(canvas) {
   // ── morpho butterfly ──────────────────────────────────────────────────
 
   function drawButterfly(time) {
-    const t = clamp((bio - 0.75) / 0.20, 0, 1);
+    const t = bio >= 0.75 ? 1 : 0;
     if (t <= 0) return;
 
     // Gentle figure-8 flight path
@@ -645,7 +645,7 @@ export function createJungle(canvas) {
   // Body is a deep barrel with very short legs.
 
   function drawJaguar(groundY, time) {
-    const t = clamp((bio - 0.92) / 0.08, 0, 1);
+    const t = bio >= 0.92 ? 1 : 0;
     if (t <= 0) return;
 
     const bx = W * 0.72;
