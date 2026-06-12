@@ -213,8 +213,8 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
 
     if (depth <= 1) {
-      // Blossom cluster
-      const clusterR = 10 + Math.random() * 8;
+      // Blossom cluster — size derived from position so it never flickers
+      const clusterR = 10 + ((Math.abs(ex * 7 + ey * 3) % 80) / 10);
       const blA = 0.55 + peace * 0.3;
       const bg = ctx.createRadialGradient(ex, ey, 0, ex, ey, clusterR);
       bg.addColorStop(0, `rgba(255,200,210,${blA})`);
