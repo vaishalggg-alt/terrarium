@@ -36,20 +36,31 @@ export function createJungle(canvas) {
     rebuildFireflies();
   }
 
+  // Multi-colour palette matching the photo: red, teal-green, blue, purple, pink
+  const FIREFLY_PALETTES = [
+    [255, 60,  60],   // red
+    [50,  255, 180],  // teal-green
+    [80,  160, 255],  // blue
+    [180, 80,  255],  // purple
+    [255, 80,  200],  // pink
+    [60,  255, 120],  // bright green
+  ];
+
   function rebuildFireflies() {
-    const count = Math.floor(bio * 32);
-    fireflies = Array.from({ length: count }, (_, i) => ({
-      x: Math.random() * W,
-      y: H * (0.25 + Math.random() * 0.55),
-      baseY: H * (0.25 + Math.random() * 0.55),
-      phase: Math.random() * TAU,
-      yPhase: Math.random() * TAU,
-      speed: 0.18 + Math.random() * 0.28,
-      size: 1.8 + Math.random() * 2.2,
-      r: Math.floor(180 + Math.random() * 75),
-      g: Math.floor(230 + Math.random() * 25),
-      b: Math.floor(80 + Math.random() * 80),
-    }));
+    const count = Math.floor(bio * 48);
+    fireflies = Array.from({ length: count }, (_, i) => {
+      const pal = FIREFLY_PALETTES[i % FIREFLY_PALETTES.length];
+      return {
+        x: Math.random() * W,
+        y: H * (0.12 + Math.random() * 0.72),
+        baseY: H * (0.12 + Math.random() * 0.72),
+        phase: Math.random() * TAU,
+        yPhase: Math.random() * TAU,
+        speed: 0.12 + Math.random() * 0.22,
+        size: 1.5 + Math.random() * 2.5,
+        r: pal[0], g: pal[1], b: pal[2],
+      };
+    });
   }
 
   function setData({ bio: b, hours: h }) {
@@ -61,33 +72,34 @@ export function createJungle(canvas) {
   // ── sky & stars ─────────────────────────────────────────────────────────
 
   function drawSky() {
-    const g = ctx.createLinearGradient(0, 0, 0, H * 0.65);
-    g.addColorStop(0, '#04060f');
-    g.addColorStop(0.6, '#080e1a');
-    g.addColorStop(1, '#0a1410');
+    // Deep blue-indigo-purple background like the photo
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0,   '#04030e');
+    g.addColorStop(0.4, '#08051a');
+    g.addColorStop(0.75,'#0a0820');
+    g.addColorStop(1,   '#070614');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-    // Stars visible through gaps in canopy
-    ctx.fillStyle = 'rgba(220,230,255,0.7)';
-    for (let i = 0; i < 55; i++) {
-      const sx = (i * 137.5) % W;
-      const sy = (i * 81.3) % (H * 0.38);
-      const a = 0.3 + Math.sin(i * 0.7) * 0.25;
-      ctx.globalAlpha = a;
-      ctx.beginPath(); ctx.arc(sx, sy, 0.9 + (i % 3) * 0.4, 0, TAU); ctx.fill();
+    // Scattered coloured light particles across the whole scene (like the photo)
+    const palettes = [[255,60,60],[50,255,180],[80,160,255],[180,80,255],[255,80,200],[60,255,120]];
+    for (let i = 0; i < 80; i++) {
+      const sx = (i * 137.5 + 30) % W;
+      const sy = (i * 93.7 + 15) % (H * 0.82);
+      const pal = palettes[i % palettes.length];
+      ctx.globalAlpha = 0.25 + Math.sin(i * 0.9) * 0.18;
+      ctx.fillStyle = `rgb(${pal[0]},${pal[1]},${pal[2]})`;
+      ctx.beginPath(); ctx.arc(sx, sy, 0.8 + (i % 3) * 0.5, 0, TAU); ctx.fill();
     }
     ctx.globalAlpha = 1;
 
     // Pale moon
-    const mx = W * 0.68, my = H * 0.12;
-    const mg = ctx.createRadialGradient(mx, my, 0, mx, my, 80);
-    mg.addColorStop(0, 'rgba(210,225,255,0.18)');
-    mg.addColorStop(1, 'rgba(210,225,255,0)');
+    const mx = W * 0.68, my = H * 0.10;
+    const mg = ctx.createRadialGradient(mx, my, 0, mx, my, 70);
+    mg.addColorStop(0, 'rgba(200,215,255,0.15)');
+    mg.addColorStop(1, 'rgba(200,215,255,0)');
     ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(225,235,255,0.55)';
-    ctx.beginPath(); ctx.arc(mx, my, 18, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(180,195,240,0.22)';
-    ctx.beginPath(); ctx.arc(mx, my, 28, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(215,225,255,0.45)';
+    ctx.beginPath(); ctx.arc(mx, my, 16, 0, TAU); ctx.fill();
   }
 
   // ── jungle canopy layers ──────────────────────────────────────────────
@@ -109,23 +121,49 @@ export function createJungle(canvas) {
   }
 
   function drawCanopy() {
-    // Far layer — very dark blue-green silhouettes
-    ctx.fillStyle = '#050d09';
+    // Far layer — deep indigo-black silhouettes
+    ctx.fillStyle = '#050410';
     treeProfile(0, W * 0.35, H * 0.18, 12, 1);  ctx.fill();
     treeProfile(W * 0.25, W * 0.7, H * 0.12, 14, 2); ctx.fill();
     treeProfile(W * 0.55, W, H * 0.16, 12, 3);  ctx.fill();
 
-    // Mid layer — slightly lighter
-    ctx.fillStyle = '#071208';
+    // Mid layer
+    ctx.fillStyle = '#070618';
     treeProfile(0, W * 0.42, H * 0.28, 10, 4);  ctx.fill();
     treeProfile(W * 0.3, W * 0.78, H * 0.22, 12, 5); ctx.fill();
     treeProfile(W * 0.6, W, H * 0.26, 10, 6);   ctx.fill();
 
-    // Near canopy — darkest, most detail
-    ctx.fillStyle = '#060f07';
+    // Near canopy — darkest
+    ctx.fillStyle = '#060510';
     treeProfile(0, W * 0.32, H * 0.38, 8, 7);   ctx.fill();
     treeProfile(W * 0.2, W * 0.65, H * 0.32, 10, 8); ctx.fill();
     treeProfile(W * 0.5, W, H * 0.36, 8, 9);    ctx.fill();
+
+    // Overhead fern fronds arching from both sides — creates tunnel feeling like the photo
+    ctx.fillStyle = '#04030d';
+    for (let i = 0; i < 7; i++) {
+      const seed = 200 + i;
+      const r2 = rng(seed);
+      const fromRight = i % 2 === 0;
+      const baseX = fromRight ? W + 10 : -10;
+      const baseY = H * (0.08 + r2() * 0.18);
+      const span  = W * (0.45 + r2() * 0.25);
+      const archY = H * (0.25 + r2() * 0.20);
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY - 30);
+      ctx.bezierCurveTo(
+        baseX + (fromRight ? -span * 0.4 : span * 0.4), baseY,
+        baseX + (fromRight ? -span * 0.8 : span * 0.8), archY - 10,
+        baseX + (fromRight ? -span       : span),        archY + 20
+      );
+      ctx.lineTo(baseX + (fromRight ? -span * 0.85 : span * 0.85), archY + 45);
+      ctx.bezierCurveTo(
+        baseX + (fromRight ? -span * 0.6 : span * 0.6), archY + 10,
+        baseX + (fromRight ? -span * 0.3 : span * 0.3), baseY + 15,
+        baseX, baseY + 20
+      );
+      ctx.closePath(); ctx.fill();
+    }
   }
 
   // Helper: draw a single tropical leaf from base point in given direction
@@ -179,29 +217,51 @@ export function createJungle(canvas) {
   }
 
   function drawGround() {
+    // Dark ground with deep blue-purple undertone
     const g = ctx.createLinearGradient(0, H * 0.72, 0, H);
-    g.addColorStop(0,   '#111f0d');
-    g.addColorStop(0.5, '#0e1a0a');
-    g.addColorStop(1,   '#090e06');
+    g.addColorStop(0,   '#0c0a1e');
+    g.addColorStop(0.5, '#090818');
+    g.addColorStop(1,   '#060510');
     ctx.fillStyle = g;
     ctx.fillRect(0, H * 0.72, W, H * 0.28);
 
-    // Moonlight patches — subtle silver pools on the ground
-    for (let i = 0; i < 4; i++) {
-      const mx = W * (0.15 + i * 0.23);
-      const my = H * (0.80 + (i % 2) * 0.06);
-      const mg = ctx.createRadialGradient(mx, my, 0, mx, my, W * 0.10);
-      mg.addColorStop(0, 'rgba(200,215,200,0.06)');
-      mg.addColorStop(1, 'rgba(200,215,200,0)');
-      ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
+    // Teal-green ground glow from below — key feature of the photo
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 5; i++) {
+      const px = W * (0.10 + i * 0.20);
+      const py = H * 0.82;
+      const pg = ctx.createRadialGradient(px, py, 0, px, py, W * 0.18);
+      pg.addColorStop(0, `rgba(30,200,120,0.10)`);
+      pg.addColorStop(1, `rgba(30,200,120,0)`);
+      ctx.fillStyle = pg; ctx.fillRect(0, 0, W, H);
     }
+    // Purple path edge glow (right side like the photo)
+    const pathGlow = ctx.createLinearGradient(W * 0.55, H * 0.72, W * 0.58, H);
+    pathGlow.addColorStop(0, 'rgba(140,60,255,0.08)');
+    pathGlow.addColorStop(1, 'rgba(140,60,255,0)');
+    ctx.fillStyle = pathGlow; ctx.fillRect(W * 0.52, H * 0.72, W * 0.48, H * 0.28);
+    ctx.restore();
 
-    // Gnarled surface roots winding across floor
+    // Subtle path running through the center-right
+    const pg2 = ctx.createLinearGradient(0, H * 0.74, 0, H);
+    pg2.addColorStop(0, 'rgba(12,10,28,0)');
+    pg2.addColorStop(0.5, 'rgba(12,10,28,0.4)');
+    pg2.addColorStop(1, 'rgba(12,10,28,0)');
+    ctx.fillStyle = pg2;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.42, H * 0.74);
+    ctx.bezierCurveTo(W * 0.44, H * 0.82, W * 0.46, H * 0.90, W * 0.44, H);
+    ctx.lineTo(W * 0.72, H);
+    ctx.bezierCurveTo(W * 0.68, H * 0.90, W * 0.64, H * 0.82, W * 0.62, H * 0.74);
+    ctx.closePath(); ctx.fill();
+
+    // Gnarled surface roots
     const roots = rng(20);
     for (let i = 0; i < 10; i++) {
       const rx = roots() * W;
       const ry = H * (0.74 + roots() * 0.10);
-      ctx.strokeStyle = `rgba(${28 + (i * 3)},${48 + (i * 3)},${20},0.9)`;
+      ctx.strokeStyle = `rgba(${18 + (i * 2)},${15 + (i * 2)},${38 + (i * 4)},0.9)`;
       ctx.lineWidth = 3 + roots() * 3; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(rx, ry);
       ctx.bezierCurveTo(
@@ -212,15 +272,32 @@ export function createJungle(canvas) {
       ctx.stroke();
     }
 
-    // Ground ferns spread across the floor
+    // Ground ferns — dark blue-green
     const fr = rng(30);
     for (let i = 0; i < 22; i++) {
       const fx = fr() * W;
       const fy = H * (0.76 + fr() * 0.09);
       const flen = 35 + fr() * 50;
       const fangle = (fr() - 0.5) * Math.PI * 0.7 - Math.PI * 0.5;
-      fernFrond(fx, fy, flen, fangle, `rgba(24,48,20,${0.7 + fr() * 0.3})`);
+      fernFrond(fx, fy, flen, fangle, `rgba(16,32,52,${0.7 + fr() * 0.3})`);
     }
+
+    // Purple/pink dots along path edge — string lights like the photo
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 14; i++) {
+      const lx = W * (0.56 + (i % 3) * 0.02 - 0.01);
+      const ly = H * (0.76 + i * 0.016);
+      const pal = i % 2 === 0 ? [200,80,255] : [255,80,200];
+      const lg = ctx.createRadialGradient(lx, ly, 0, lx, ly, 8);
+      lg.addColorStop(0, `rgba(${pal[0]},${pal[1]},${pal[2]},0.9)`);
+      lg.addColorStop(1, `rgba(${pal[0]},${pal[1]},${pal[2]},0)`);
+      ctx.fillStyle = lg;
+      ctx.beginPath(); ctx.arc(lx, ly, 8, 0, TAU); ctx.fill();
+      ctx.fillStyle = `rgba(${pal[0]},${pal[1]},${pal[2]},0.95)`;
+      ctx.beginPath(); ctx.arc(lx, ly, 1.5, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
   }
 
   function drawMidground() {
@@ -234,12 +311,12 @@ export function createJungle(canvas) {
     trunkDefs.forEach(({ xf, tw, lean }) => {
       const tx = W * xf;
       const topX = tx + lean;
-      // Trunk outline — organic bezier instead of rectangle
+      // Trunk outline — deep blue-purple like the photo
       const tg = ctx.createLinearGradient(tx - tw, 0, tx + tw, 0);
-      tg.addColorStop(0,    '#0e1c0b');
-      tg.addColorStop(0.38, '#243d1e');
-      tg.addColorStop(0.65, '#1c3018');
-      tg.addColorStop(1,    '#0e1c0b');
+      tg.addColorStop(0,    '#0c0a22');
+      tg.addColorStop(0.38, '#1e1848');
+      tg.addColorStop(0.65, '#16143a');
+      tg.addColorStop(1,    '#0c0a22');
       ctx.fillStyle = tg;
       ctx.beginPath();
       ctx.moveTo(tx - tw / 2, H);
@@ -248,7 +325,7 @@ export function createJungle(canvas) {
       ctx.bezierCurveTo(topX + tw / 2 + 2, H * 0.45, tx + tw / 2 - lean * 0.3, H * 0.80, tx + tw / 2, H);
       ctx.closePath(); ctx.fill();
       // Bark horizontal lines
-      ctx.strokeStyle = '#0b1609'; ctx.lineCap = 'round';
+      ctx.strokeStyle = '#080620'; ctx.lineCap = 'round';
       for (let b = 0; b < 10; b++) {
         const by2 = H * (0.32 + b * 0.07);
         const bxt = lerp(tx, topX, (by2 - H) / (H * 0.28 - H));
@@ -259,7 +336,7 @@ export function createJungle(canvas) {
         ctx.stroke();
       }
       // Moss patches on shadow side
-      ctx.fillStyle = 'rgba(20,42,18,0.6)';
+      ctx.fillStyle = 'rgba(14,12,38,0.6)';
       for (let m = 0; m < 4; m++) {
         const my = H * (0.45 + m * 0.08);
         ctx.beginPath();
@@ -267,7 +344,7 @@ export function createJungle(canvas) {
         ctx.fill();
       }
       // Root buttress flares spreading at ground
-      ctx.fillStyle = '#172b14';
+      ctx.fillStyle = '#100e28';
       [[-1.1, -2.5], [1.1, 2.5]].forEach(([dirX, dirY]) => {
         ctx.beginPath();
         ctx.moveTo(tx, H * 0.72);
@@ -278,20 +355,20 @@ export function createJungle(canvas) {
       });
     });
 
-    // Hanging vines — thicker, more visible
+    // Hanging vines — deep blue-purple
     const vr = rng(88);
     for (let i = 0; i < 12; i++) {
       const vx = W * (0.05 + vr() * 0.90);
       const vlen = H * (0.30 + vr() * 0.32);
       const sway = (vr() - 0.5) * 45;
       const vw = 1.2 + vr() * 2;
-      ctx.strokeStyle = `rgba(22,44,18,${0.7 + vr() * 0.3})`;
+      ctx.strokeStyle = `rgba(18,14,42,${0.7 + vr() * 0.3})`;
       ctx.lineWidth = vw; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(vx, 0);
       ctx.bezierCurveTo(vx + sway * 0.28, vlen * 0.32, vx + sway * 0.72, vlen * 0.68, vx + sway, vlen);
       ctx.stroke();
       // Leaf clusters at vine nodes
-      ctx.fillStyle = 'rgba(20,40,16,0.85)';
+      ctx.fillStyle = 'rgba(14,12,36,0.85)';
       for (let j = 0; j < 3; j++) {
         const lt = 0.22 + j * 0.28;
         const lx = lerp(vx, vx + sway, lt);
@@ -300,7 +377,7 @@ export function createJungle(canvas) {
       }
     }
 
-    // Large tropical leaves from screen edges and trunks — moonlit highlight edge
+    // Large tropical leaves — dark blue-black with subtle blue edge
     const leafDefs = [
       { bx: -8,       by: H * 0.50, len: W * 0.24, hw: H * 0.065, angle: 0.38 },
       { bx: W * 0.12, by: H * 0.56, len: W * 0.21, hw: H * 0.055, angle: 0.16 },
@@ -312,10 +389,9 @@ export function createJungle(canvas) {
       { bx: W * 0.92, by: H * 0.64, len: W * 0.14, hw: H * 0.038, angle: Math.PI - 0.28 },
     ];
     leafDefs.forEach(({ bx, by, len, hw, angle }) => {
-      // Dark fill first
-      tropicalLeaf(bx, by, len, hw, angle, '#152818', '#111f14');
-      // Moonlit edge highlight on upper surface
-      tropicalLeaf(bx, by, len * 0.96, hw * 0.72, angle, 'rgba(28,52,24,0.55)', 'rgba(35,62,28,0.4)');
+      tropicalLeaf(bx, by, len, hw, angle, '#0e0c28', '#100e30');
+      // Subtle blue-teal edge highlight
+      tropicalLeaf(bx, by, len * 0.96, hw * 0.72, angle, 'rgba(20,18,60,0.55)', 'rgba(30,25,80,0.40)');
     });
   }
 
@@ -432,13 +508,14 @@ export function createJungle(canvas) {
       f.phase += f.speed * 0.011;
       const x = ((f.x + f.speed * 0.6) % W + W) % W;
       f.x = x;
-      const y = f.baseY + Math.sin(f.yPhase + time * 0.0005) * 28;
-      const flicker = 0.5 + Math.sin(time * 0.004 + f.phase * 6) * 0.5;
-      const alpha = t * flicker * 0.92;
+      const y = f.baseY + Math.sin(f.yPhase + time * 0.0005) * 30;
+      const flicker = 0.55 + Math.sin(time * 0.004 + f.phase * 6) * 0.45;
+      const alpha = t * flicker;
       if (alpha < 0.05) continue;
-      drawGlow(x, y, f.size * 6, f.r, f.g, f.b, alpha * 0.55);
+      // Larger, more vivid glow to match the photo's scattered lights
+      drawGlow(x, y, f.size * 9, f.r, f.g, f.b, alpha * 0.65);
       ctx.fillStyle = `rgba(${f.r},${f.g},${f.b},${alpha})`;
-      ctx.beginPath(); ctx.arc(x, y, f.size, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, f.size * 1.2, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }
@@ -742,13 +819,31 @@ export function createJungle(canvas) {
 
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    // Ground-level bio-fog
-    const fogG = ctx.createLinearGradient(0, groundY - 30, 0, groundY + 80);
-    fogG.addColorStop(0, `rgba(20,80,50,0)`);
-    fogG.addColorStop(0.4, `rgba(20,80,50,${t * 0.12})`);
-    fogG.addColorStop(1, `rgba(20,80,50,0)`);
+    // Teal-green ground fog (strong, like the photo)
+    const fogG = ctx.createLinearGradient(0, groundY - 60, 0, groundY + 100);
+    fogG.addColorStop(0, `rgba(20,200,120,0)`);
+    fogG.addColorStop(0.35, `rgba(20,200,120,${t * 0.18})`);
+    fogG.addColorStop(0.7, `rgba(20,200,120,${t * 0.10})`);
+    fogG.addColorStop(1, `rgba(20,200,120,0)`);
     ctx.fillStyle = fogG;
-    ctx.fillRect(0, groundY - 30, W, 110);
+    ctx.fillRect(0, groundY - 60, W, 160);
+
+    // Purple ambient from left side
+    const purpleG = ctx.createLinearGradient(0, groundY - 40, 0, groundY + 80);
+    purpleG.addColorStop(0, `rgba(100,40,255,0)`);
+    purpleG.addColorStop(0.4, `rgba(100,40,255,${t * 0.12})`);
+    purpleG.addColorStop(1, `rgba(100,40,255,0)`);
+    ctx.fillStyle = purpleG;
+    ctx.fillRect(0, groundY - 40, W * 0.35, 120);
+
+    // Blue ambient from right
+    const blueG = ctx.createLinearGradient(W * 0.65, groundY - 30, W, groundY + 80);
+    blueG.addColorStop(0, `rgba(40,100,255,0)`);
+    blueG.addColorStop(0.4, `rgba(40,100,255,${t * 0.10})`);
+    blueG.addColorStop(1, `rgba(40,100,255,0)`);
+    ctx.fillStyle = blueG;
+    ctx.fillRect(W * 0.65, groundY - 30, W * 0.35, 110);
+
     ctx.restore();
   }
 
