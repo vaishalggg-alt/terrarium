@@ -86,7 +86,7 @@ export function createOcean(canvas, { onBottleClick } = {}) {
       const isNewest = launchNewest && k === letters.length - 1;
       return {
         fx: 0.15 + r() * 0.70,   // horizontal 0..1
-        fy: 0.55 + r() * 0.38,   // depth: 0.55–0.93, reaches the dark deep ocean
+        fy: 0.72 + r() * 0.26,   // depth: 0.72–0.98, deep into the dark ocean
         drift: (r() - 0.5) * 0.005,
         bob: r() * TAU,
         scale: 0.82 + r() * 0.42,
