@@ -361,29 +361,29 @@ export function createOcean(canvas, { onBottleClick } = {}) {
     //   body mid:    y = 44   half-width = 15
     //   body bottom: y = 58   half-width = 13  (rounded bottom)
     // Shift so visual center is near y=30 for the bob pivot
-    const YOF = -30; // offset so pivot is at body mid
+    const YOF = -25; // offset so pivot is at body mid
 
     function bottlePath() {
       ctx.beginPath();
-      ctx.moveTo(0, YOF + 0); // cork top-center (start left side going right)
+      ctx.moveTo(0, YOF + 0); // cork top-center
       // Left side — going down
-      ctx.lineTo(-3.8, YOF + 0);   // cork left top
-      ctx.lineTo(-4.2, YOF + 8);   // cork bottom / mouth
-      ctx.lineTo(-5.5, YOF + 11);  // neck top flare
-      ctx.lineTo(-5.0, YOF + 22);  // neck bottom
-      // shoulder curve
-      ctx.bezierCurveTo(-5.5, YOF + 26, -14, YOF + 28, -14.5, YOF + 32);
-      // body
-      ctx.lineTo(-15, YOF + 44);
+      ctx.lineTo(-3.5, YOF + 0);   // cork left top
+      ctx.lineTo(-3.8, YOF + 6);   // cork bottom / mouth
+      ctx.lineTo(-4.5, YOF + 8);   // neck top flare
+      ctx.lineTo(-4.2, YOF + 16);  // neck bottom (shorter neck)
+      // shoulder curve — quicker taper
+      ctx.bezierCurveTo(-4.5, YOF + 19, -10, YOF + 22, -10.5, YOF + 26);
+      // body (narrower: half-width ~10.5 not 15)
+      ctx.lineTo(-10.5, YOF + 42);
       // bottom curve
-      ctx.bezierCurveTo(-14.8, YOF + 56, -10, YOF + 60, 0, YOF + 60);
+      ctx.bezierCurveTo(-10.4, YOF + 50, -7, YOF + 53, 0, YOF + 53);
       // Right side — mirror going up
-      ctx.bezierCurveTo(10, YOF + 60, 14.8, YOF + 56, 15, YOF + 44);
-      ctx.lineTo(14.5, YOF + 32);
-      ctx.bezierCurveTo(14, YOF + 28, 5.5, YOF + 26, 5.0, YOF + 22);
-      ctx.lineTo(5.5, YOF + 11);
-      ctx.lineTo(4.2, YOF + 8);
-      ctx.lineTo(3.8, YOF + 0);
+      ctx.bezierCurveTo(7, YOF + 53, 10.4, YOF + 50, 10.5, YOF + 42);
+      ctx.lineTo(10.5, YOF + 26);
+      ctx.bezierCurveTo(10, YOF + 22, 4.5, YOF + 19, 4.2, YOF + 16);
+      ctx.lineTo(4.5, YOF + 8);
+      ctx.lineTo(3.8, YOF + 6);
+      ctx.lineTo(3.5, YOF + 0);
       ctx.closePath();
     }
 
@@ -401,25 +401,25 @@ export function createOcean(canvas, { onBottleClick } = {}) {
     // Parchment scroll inside the body
     ctx.save();
     ctx.beginPath();
-    ctx.ellipse(0, YOF + 44, 13, 27, 0, 0, TAU); // clip to body area
+    ctx.ellipse(0, YOF + 38, 9, 18, 0, 0, TAU); // clip to body area
     ctx.clip();
 
     ctx.fillStyle = 'rgba(240,228,196,0.82)';
     ctx.beginPath();
-    ctx.ellipse(0, YOF + 44, 7.5, 20, 0, 0, TAU);
+    ctx.ellipse(0, YOF + 38, 5.5, 14, 0, 0, TAU);
     ctx.fill();
     // Slight scroll curl at top
     ctx.fillStyle = 'rgba(220,205,165,0.9)';
     ctx.beginPath();
-    ctx.ellipse(0, YOF + 25, 7, 4, 0, 0, TAU);
+    ctx.ellipse(0, YOF + 25, 5, 3, 0, 0, TAU);
     ctx.fill();
     // Faint writing lines
     ctx.strokeStyle = 'rgba(140,110,60,0.28)';
     ctx.lineWidth = 0.9;
-    for (let i = 0; i < 5; i++) {
-      const ly = YOF + 34 + i * 4.5;
+    for (let i = 0; i < 4; i++) {
+      const ly = YOF + 30 + i * 4;
       ctx.beginPath();
-      ctx.moveTo(-5, ly); ctx.lineTo(5, ly);
+      ctx.moveTo(-4, ly); ctx.lineTo(4, ly);
       ctx.stroke();
     }
     ctx.restore();
@@ -431,30 +431,28 @@ export function createOcean(canvas, { onBottleClick } = {}) {
     ctx.stroke();
 
     // ── highlight streak on left body ────────────────────────────────────
-    const hg = ctx.createLinearGradient(-10, YOF + 28, -10, YOF + 55);
+    const hg = ctx.createLinearGradient(-7, YOF + 22, -7, YOF + 48);
     hg.addColorStop(0, 'rgba(255,255,255,0.28)');
     hg.addColorStop(1, 'rgba(255,255,255,0.04)');
     ctx.fillStyle = hg;
     ctx.save();
     ctx.beginPath();
-    ctx.ellipse(-8, YOF + 40, 3.5, 14, -0.15, 0, TAU);
-    // Clip to bottle body so highlight doesn't bleed outside
     bottlePath();
     ctx.clip();
     ctx.beginPath();
-    ctx.ellipse(-8, YOF + 40, 3.5, 14, -0.15, 0, TAU);
+    ctx.ellipse(-6, YOF + 36, 2.5, 11, -0.15, 0, TAU);
     ctx.fillStyle = hg;
     ctx.fill();
     ctx.restore();
 
     // ── cork ─────────────────────────────────────────────────────────────
-    const corkG = ctx.createLinearGradient(-3.8, YOF, 3.8, YOF + 8);
+    const corkG = ctx.createLinearGradient(-3.5, YOF, 3.5, YOF + 6);
     corkG.addColorStop(0, '#c49040');
     corkG.addColorStop(0.5, '#d9a855');
     corkG.addColorStop(1, '#a87830');
     ctx.fillStyle = corkG;
     ctx.beginPath();
-    ctx.roundRect(-3.8, YOF, 7.6, 8, 1.5);
+    ctx.roundRect(-3.5, YOF, 7, 6, 1.2);
     ctx.fill();
     ctx.strokeStyle = 'rgba(90,55,10,0.4)';
     ctx.lineWidth = 0.8;
@@ -464,7 +462,7 @@ export function createOcean(canvas, { onBottleClick } = {}) {
     ctx.lineWidth = 0.6;
     for (let i = 1; i <= 2; i++) {
       ctx.beginPath();
-      ctx.moveTo(-3.4, YOF + i * 2.5); ctx.lineTo(3.4, YOF + i * 2.5);
+      ctx.moveTo(-3, YOF + i * 2); ctx.lineTo(3, YOF + i * 2);
       ctx.stroke();
     }
   }
