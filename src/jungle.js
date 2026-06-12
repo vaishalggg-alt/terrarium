@@ -476,7 +476,7 @@ export function createJungle(canvas) {
   }
 
   function drawMushrooms(groundY, time) {
-    const t = bio >= 0.10 ? 1 : 0;
+    const t = bio >= 0.25 ? 1 : 0;
     if (t <= 0) return;
     const pulse = 0.85 + Math.sin(time * 0.0008) * 0.15;
     const positions = rng(77);
@@ -513,7 +513,7 @@ export function createJungle(canvas) {
   }
 
   function drawOrchids(groundY) {
-    const t = bio >= 0.28 ? 1 : 0;
+    const t = bio >= 0.44 ? 1 : 0;
     if (t <= 0) return;
     const r = rng(44);
     for (let i = 0; i < 12; i++) {
@@ -526,7 +526,7 @@ export function createJungle(canvas) {
   // ── fireflies ─────────────────────────────────────────────────────────
 
   function drawFireflies(time) {
-    const t = bio >= 0.18 ? 1 : 0;
+    const t = bio >= 0.35 ? 1 : 0;
     if (t <= 0 || !fireflies.length) return;
 
     ctx.save();
@@ -553,7 +553,7 @@ export function createJungle(canvas) {
   // pupils, long folded hind legs with webbed toes, tympanum discs.
 
   function drawFrog(groundY, time) {
-    const t = bio >= 0.40 ? 1 : 0;
+    const t = bio >= 0.53 ? 1 : 0;
     if (t <= 0) return;
 
     const bx = W * 0.28, by = groundY - 10;
@@ -687,7 +687,7 @@ export function createJungle(canvas) {
   // ── morpho butterfly ──────────────────────────────────────────────────
 
   function drawButterfly(time) {
-    const t = bio >= 0.60 ? 1 : 0;
+    const t = bio >= 0.62 ? 1 : 0;
     if (t <= 0) return;
 
     // Gentle figure-8 flight path
@@ -841,7 +841,7 @@ export function createJungle(canvas) {
   // ── bioluminescent serpent — coiled, static ───────────────────────────
 
   function drawSerpent(groundY, time) {
-    const t = bio >= 0.88 ? 1 : 0;
+    const t = bio >= 0.86 ? 1 : 0;
     if (t <= 0) return;
 
     const cx = W * 0.22, cy = groundY - 10;
@@ -917,7 +917,7 @@ export function createJungle(canvas) {
   // long neck, elongated snout, large ears, branching antlers.
 
   function drawSpiritDeer(groundY, time) {
-    const t = bio >= 0.95 ? 1 : 0;
+    const t = bio >= 0.93 ? 1 : 0;
     if (t <= 0) return;
 
     const bx = W * 0.50, by = groundY;
