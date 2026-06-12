@@ -102,68 +102,161 @@ export function createJungle(canvas) {
     ctx.beginPath(); ctx.arc(mx, my, 16, 0, TAU); ctx.fill();
   }
 
-  // ── jungle canopy layers ──────────────────────────────────────────────
+  // ── tree fern structure — tall straight trunks + pergola + fern crowns ──
 
-  function treeProfile(x0, x1, peakY, pts, seed) {
-    const r = rng(seed);
-    ctx.beginPath(); ctx.moveTo(x0, H);
-    ctx.lineTo(x0, peakY + r() * (H * 0.06));
-    for (let i = 0; i <= pts; i++) {
-      const t = i / pts;
-      const x = lerp(x0, x1, t);
-      const noise = (r() - 0.5) * H * 0.06;
-      const arch = Math.sin(t * Math.PI) * (H * 0.12);
-      ctx.lineTo(x, peakY - arch + noise);
-    }
-    ctx.lineTo(x1, peakY + r() * (H * 0.06));
-    ctx.lineTo(x1, H);
-    ctx.closePath();
+  // The trunk X positions shared between drawTrunks and drawFernCrowns
+  function trunkPositions() {
+    return [
+      // Deepest bg row — very thin, high up
+      { xf: 0.11, tw:  9, topY: 0.08, scale: 0.50 },
+      { xf: 0.28, tw:  9, topY: 0.09, scale: 0.50 },
+      { xf: 0.50, tw:  9, topY: 0.07, scale: 0.50 },
+      { xf: 0.72, tw:  9, topY: 0.09, scale: 0.50 },
+      { xf: 0.89, tw:  9, topY: 0.08, scale: 0.50 },
+      // Mid bg row
+      { xf: 0.04, tw: 14, topY: 0.04, scale: 0.72 },
+      { xf: 0.20, tw: 14, topY: 0.05, scale: 0.72 },
+      { xf: 0.40, tw: 14, topY: 0.04, scale: 0.72 },
+      { xf: 0.60, tw: 14, topY: 0.04, scale: 0.72 },
+      { xf: 0.80, tw: 14, topY: 0.05, scale: 0.72 },
+      { xf: 0.96, tw: 14, topY: 0.04, scale: 0.72 },
+      // Foreground row — thick, tallest
+      { xf: 0.13, tw: 20, topY: 0.02, scale: 0.92 },
+      { xf: 0.38, tw: 24, topY: 0.01, scale: 1.00 },
+      { xf: 0.62, tw: 24, topY: 0.01, scale: 1.00 },
+      { xf: 0.87, tw: 20, topY: 0.02, scale: 0.92 },
+    ];
   }
 
-  function drawCanopy() {
-    // Far layer — deep indigo-black silhouettes
-    ctx.fillStyle = '#050410';
-    treeProfile(0, W * 0.35, H * 0.18, 12, 1);  ctx.fill();
-    treeProfile(W * 0.25, W * 0.7, H * 0.12, 14, 2); ctx.fill();
-    treeProfile(W * 0.55, W, H * 0.16, 12, 3);  ctx.fill();
-
-    // Mid layer
-    ctx.fillStyle = '#070618';
-    treeProfile(0, W * 0.42, H * 0.28, 10, 4);  ctx.fill();
-    treeProfile(W * 0.3, W * 0.78, H * 0.22, 12, 5); ctx.fill();
-    treeProfile(W * 0.6, W, H * 0.26, 10, 6);   ctx.fill();
-
-    // Near canopy — darkest
-    ctx.fillStyle = '#060510';
-    treeProfile(0, W * 0.32, H * 0.38, 8, 7);   ctx.fill();
-    treeProfile(W * 0.2, W * 0.65, H * 0.32, 10, 8); ctx.fill();
-    treeProfile(W * 0.5, W, H * 0.36, 8, 9);    ctx.fill();
-
-    // Overhead fern fronds arching from both sides — creates tunnel feeling like the photo
-    ctx.fillStyle = '#04030d';
-    for (let i = 0; i < 7; i++) {
-      const seed = 200 + i;
-      const r2 = rng(seed);
-      const fromRight = i % 2 === 0;
-      const baseX = fromRight ? W + 10 : -10;
-      const baseY = H * (0.08 + r2() * 0.18);
-      const span  = W * (0.45 + r2() * 0.25);
-      const archY = H * (0.25 + r2() * 0.20);
-      ctx.beginPath();
-      ctx.moveTo(baseX, baseY - 30);
-      ctx.bezierCurveTo(
-        baseX + (fromRight ? -span * 0.4 : span * 0.4), baseY,
-        baseX + (fromRight ? -span * 0.8 : span * 0.8), archY - 10,
-        baseX + (fromRight ? -span       : span),        archY + 20
-      );
-      ctx.lineTo(baseX + (fromRight ? -span * 0.85 : span * 0.85), archY + 45);
-      ctx.bezierCurveTo(
-        baseX + (fromRight ? -span * 0.6 : span * 0.6), archY + 10,
-        baseX + (fromRight ? -span * 0.3 : span * 0.3), baseY + 15,
-        baseX, baseY + 20
-      );
-      ctx.closePath(); ctx.fill();
+  // Draw a single fern frond radiating from crown point (cx,cy)
+  function fernFrondFromCrown(cx, cy, len, angle, col) {
+    const steps = 10;
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    const ex = cx + Math.cos(angle) * len;
+    const ey = cy + Math.sin(angle) * len;
+    const cpx = cx + Math.cos(angle - 0.3) * len * 0.55;
+    const cpy = cy + Math.sin(angle - 0.3) * len * 0.55;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.quadraticCurveTo(cpx, cpy, ex, ey); ctx.stroke();
+    // Pinnae (leaflets) along rachis
+    for (let i = 2; i < steps; i++) {
+      const t = i / steps;
+      const px = cx + (cpx - cx) * 2 * t * (1 - t) + ex * t * t;
+      const py = cy + (cpy - cy) * 2 * t * (1 - t) + ey * t * t;
+      const plen = len * 0.18 * (1 - t * 0.6);
+      const pAngle = angle + Math.PI * 0.5;
+      ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.moveTo(px, py);
+      ctx.lineTo(px + Math.cos(pAngle) * plen, py + Math.sin(pAngle) * plen); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px, py);
+      ctx.lineTo(px - Math.cos(pAngle) * plen * 0.7, py - Math.sin(pAngle) * plen * 0.7); ctx.stroke();
     }
+  }
+
+  function drawTrunksAndPergola() {
+    const trunks = trunkPositions();
+    const groundY = H * 0.74;
+
+    // ── pergola beams connecting trunk tops ──
+    // Longitudinal beam running left to right across top
+    const beamY = H * 0.10;
+    const beamH = H * 0.022;
+    const tg2 = ctx.createLinearGradient(0, beamY, 0, beamY + beamH);
+    tg2.addColorStop(0, '#1e1848');
+    tg2.addColorStop(1, '#0c0a22');
+    ctx.fillStyle = tg2;
+    ctx.beginPath();
+    ctx.roundRect(W * 0.03, beamY, W * 0.94, beamH, 2);
+    ctx.fill();
+    // Cross beams between each pair of trunks
+    trunks.forEach(tr => {
+      const tx = W * tr.xf;
+      const topY = H * tr.topY;
+      const bw = tr.tw * 0.9;
+      ctx.fillStyle = '#0c0a22';
+      ctx.beginPath();
+      ctx.roundRect(tx - bw / 2, topY - H * 0.005, bw, beamY - topY + beamH + H * 0.005, 1);
+      ctx.fill();
+    });
+
+    // ── trunks ──
+    trunks.forEach(({ xf, tw, topY: topYf, scale }) => {
+      const tx = W * xf;
+      const topY = H * topYf;
+      const r2 = rng((xf * 100) | 0);
+
+      // Cylinder shading gradient
+      const tg = ctx.createLinearGradient(tx - tw, 0, tx + tw, 0);
+      tg.addColorStop(0,    '#080620');
+      tg.addColorStop(0.25, '#1a1645');
+      tg.addColorStop(0.5,  '#221e56');
+      tg.addColorStop(0.75, '#1a1645');
+      tg.addColorStop(1,    '#080620');
+      ctx.fillStyle = tg;
+      ctx.beginPath();
+      ctx.moveTo(tx - tw / 2, groundY + 4);
+      ctx.lineTo(tx - tw / 2, topY);
+      ctx.lineTo(tx + tw / 2, topY);
+      ctx.lineTo(tx + tw / 2, groundY + 4);
+      ctx.closePath(); ctx.fill();
+
+      // Horizontal ring marks on trunk (tree fern characteristic)
+      ctx.strokeStyle = 'rgba(8,6,28,0.7)'; ctx.lineCap = 'round';
+      const rings = Math.floor((groundY - topY) / (H * 0.055));
+      for (let b = 0; b < rings; b++) {
+        const by2 = topY + (groundY - topY) * (b / rings);
+        ctx.lineWidth = 0.7 + (b % 3) * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(tx - tw / 2 + 2, by2);
+        ctx.quadraticCurveTo(tx, by2 + 1.5, tx + tw / 2 - 2, by2 - 0.5);
+        ctx.stroke();
+      }
+
+      // Elliptical trunk top cap
+      const capG = ctx.createRadialGradient(tx, topY, 0, tx, topY, tw * 0.7);
+      capG.addColorStop(0, '#2a2460');
+      capG.addColorStop(1, '#0c0a22');
+      ctx.fillStyle = capG;
+      ctx.beginPath(); ctx.ellipse(tx, topY, tw / 2, tw * 0.22, 0, 0, TAU); ctx.fill();
+
+      // Root base — slight flare at ground
+      const tg3 = ctx.createLinearGradient(tx - tw * 1.5, 0, tx + tw * 1.5, 0);
+      tg3.addColorStop(0, 'rgba(8,6,28,0)');
+      tg3.addColorStop(0.5, 'rgba(26,22,68,0.7)');
+      tg3.addColorStop(1, 'rgba(8,6,28,0)');
+      ctx.fillStyle = tg3;
+      ctx.beginPath();
+      ctx.moveTo(tx - tw * 1.4, groundY + 2);
+      ctx.bezierCurveTo(tx - tw * 0.8, groundY - H * 0.02, tx - tw / 2, groundY - H * 0.05, tx - tw / 2, H * topYf + H * 0.05);
+      ctx.lineTo(tx + tw / 2, H * topYf + H * 0.05);
+      ctx.bezierCurveTo(tx + tw / 2, groundY - H * 0.05, tx + tw * 0.8, groundY - H * 0.02, tx + tw * 1.4, groundY + 2);
+      ctx.closePath(); ctx.fill();
+    });
+  }
+
+  function drawFernCrowns() {
+    const trunks = trunkPositions();
+    trunks.forEach(({ xf, tw, topY: topYf, scale }) => {
+      const tx = W * xf;
+      const crownY = H * topYf;
+      const frondLen = W * 0.14 * scale;
+      const col = `rgba(8,6,26,0.92)`;
+      const colMid = `rgba(14,10,38,0.85)`;
+      // Radiate ~12 fronds from the crown in a full fan
+      const count = 11;
+      for (let i = 0; i < count; i++) {
+        const a = (i / count) * TAU - TAU * 0.08;
+        // Only draw fronds going upward and sideways (skip straight down into trunk)
+        if (a > Math.PI * 0.15 && a < Math.PI * 0.85) continue;
+        const len = frondLen * (0.65 + Math.sin(i * 1.3) * 0.30);
+        fernFrondFromCrown(tx, crownY, len, a, col);
+      }
+      // Shorter inner fronds for density
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU * 0.7 - Math.PI * 0.35 - Math.PI * 0.5;
+        fernFrondFromCrown(tx, crownY, frondLen * 0.45, a, colMid);
+      }
+    });
   }
 
   // Helper: draw a single tropical leaf from base point in given direction
@@ -300,98 +393,32 @@ export function createJungle(canvas) {
     ctx.restore();
   }
 
-  function drawMidground() {
-    // Organic tree trunks with bark texture
-    const trunkDefs = [
-      { xf: 0.08, tw: 22, lean:  4 },
-      { xf: 0.35, tw: 28, lean: -3 },
-      { xf: 0.62, tw: 24, lean:  5 },
-      { xf: 0.91, tw: 20, lean: -4 },
-    ];
-    trunkDefs.forEach(({ xf, tw, lean }) => {
-      const tx = W * xf;
-      const topX = tx + lean;
-      // Trunk outline — deep blue-purple like the photo
-      const tg = ctx.createLinearGradient(tx - tw, 0, tx + tw, 0);
-      tg.addColorStop(0,    '#0c0a22');
-      tg.addColorStop(0.38, '#1e1848');
-      tg.addColorStop(0.65, '#16143a');
-      tg.addColorStop(1,    '#0c0a22');
-      ctx.fillStyle = tg;
-      ctx.beginPath();
-      ctx.moveTo(tx - tw / 2, H);
-      ctx.bezierCurveTo(tx - tw / 2 + lean * 0.3, H * 0.80, topX - tw / 2 - 2, H * 0.45, topX - tw / 2, H * 0.28);
-      ctx.lineTo(topX + tw / 2, H * 0.28);
-      ctx.bezierCurveTo(topX + tw / 2 + 2, H * 0.45, tx + tw / 2 - lean * 0.3, H * 0.80, tx + tw / 2, H);
-      ctx.closePath(); ctx.fill();
-      // Bark horizontal lines
-      ctx.strokeStyle = '#080620'; ctx.lineCap = 'round';
-      for (let b = 0; b < 10; b++) {
-        const by2 = H * (0.32 + b * 0.07);
-        const bxt = lerp(tx, topX, (by2 - H) / (H * 0.28 - H));
-        ctx.lineWidth = 0.8 + (b % 3) * 0.4;
-        ctx.beginPath();
-        ctx.moveTo(bxt - tw / 2 + 2, by2);
-        ctx.quadraticCurveTo(bxt, by2 + 1.5, bxt + tw / 2 - 2, by2 - 0.5);
-        ctx.stroke();
-      }
-      // Moss patches on shadow side
-      ctx.fillStyle = 'rgba(14,12,38,0.6)';
-      for (let m = 0; m < 4; m++) {
-        const my = H * (0.45 + m * 0.08);
-        ctx.beginPath();
-        ctx.ellipse(tx - tw * 0.28, my, 4 + m * 1.5, 3, 0.3, 0, TAU);
-        ctx.fill();
-      }
-      // Root buttress flares spreading at ground
-      ctx.fillStyle = '#100e28';
-      [[-1.1, -2.5], [1.1, 2.5]].forEach(([dirX, dirY]) => {
-        ctx.beginPath();
-        ctx.moveTo(tx, H * 0.72);
-        ctx.quadraticCurveTo(tx + dirX * tw * 1.0, H * 0.78, tx + dirX * tw * 2.2, H * 0.82);
-        ctx.lineTo(tx + dirX * tw * 2.4, H * 0.85);
-        ctx.quadraticCurveTo(tx + dirX * tw * 1.2, H * 0.80, tx + dirX * tw * 0.3, H * 0.75);
-        ctx.closePath(); ctx.fill();
-      });
-    });
-
-    // Hanging vines — deep blue-purple
+  function drawForeground() {
+    // Hanging vines from pergola/canopy
     const vr = rng(88);
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 10; i++) {
       const vx = W * (0.05 + vr() * 0.90);
-      const vlen = H * (0.30 + vr() * 0.32);
-      const sway = (vr() - 0.5) * 45;
-      const vw = 1.2 + vr() * 2;
-      ctx.strokeStyle = `rgba(18,14,42,${0.7 + vr() * 0.3})`;
-      ctx.lineWidth = vw; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(vx, 0);
-      ctx.bezierCurveTo(vx + sway * 0.28, vlen * 0.32, vx + sway * 0.72, vlen * 0.68, vx + sway, vlen);
+      const vlen = H * (0.18 + vr() * 0.28);
+      const sway = (vr() - 0.5) * 35;
+      ctx.strokeStyle = `rgba(18,14,42,${0.6 + vr() * 0.35})`;
+      ctx.lineWidth = 1.2 + vr() * 1.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(vx, H * 0.10);
+      ctx.bezierCurveTo(vx + sway * 0.28, H * 0.22, vx + sway * 0.7, H * 0.30, vx + sway, H * 0.10 + vlen);
       ctx.stroke();
-      // Leaf clusters at vine nodes
-      ctx.fillStyle = 'rgba(14,12,36,0.85)';
-      for (let j = 0; j < 3; j++) {
-        const lt = 0.22 + j * 0.28;
-        const lx = lerp(vx, vx + sway, lt);
-        const ly = lerp(0, vlen, lt);
-        ctx.beginPath(); ctx.ellipse(lx, ly, 5 + j, 3, (vr() - 0.5) * 1.2, 0, TAU); ctx.fill();
-      }
     }
 
-    // Large tropical leaves — dark blue-black with subtle blue edge
+    // Large tropical leaves framing the sides
     const leafDefs = [
-      { bx: -8,       by: H * 0.50, len: W * 0.24, hw: H * 0.065, angle: 0.38 },
-      { bx: W * 0.12, by: H * 0.56, len: W * 0.21, hw: H * 0.055, angle: 0.16 },
-      { bx: W + 8,    by: H * 0.48, len: W * 0.25, hw: H * 0.065, angle: Math.PI - 0.35 },
-      { bx: W * 0.86, by: H * 0.55, len: W * 0.20, hw: H * 0.055, angle: Math.PI - 0.20 },
-      { bx: W * 0.34, by: H * 0.42, len: W * 0.19, hw: H * 0.052, angle: 0.52 },
-      { bx: W * 0.65, by: H * 0.44, len: W * 0.18, hw: H * 0.050, angle: Math.PI - 0.48 },
-      { bx: W * 0.05, by: H * 0.66, len: W * 0.15, hw: H * 0.040, angle: 0.25 },
-      { bx: W * 0.92, by: H * 0.64, len: W * 0.14, hw: H * 0.038, angle: Math.PI - 0.28 },
+      { bx: -8,       by: H * 0.50, len: W * 0.26, hw: H * 0.070, angle: 0.38 },
+      { bx: W * 0.10, by: H * 0.57, len: W * 0.22, hw: H * 0.058, angle: 0.18 },
+      { bx: W + 8,    by: H * 0.48, len: W * 0.27, hw: H * 0.070, angle: Math.PI - 0.35 },
+      { bx: W * 0.90, by: H * 0.55, len: W * 0.22, hw: H * 0.058, angle: Math.PI - 0.20 },
+      { bx: -8,       by: H * 0.68, len: W * 0.18, hw: H * 0.045, angle: 0.22 },
+      { bx: W + 8,    by: H * 0.66, len: W * 0.18, hw: H * 0.045, angle: Math.PI - 0.24 },
     ];
     leafDefs.forEach(({ bx, by, len, hw, angle }) => {
-      tropicalLeaf(bx, by, len, hw, angle, '#0e0c28', '#100e30');
-      // Subtle blue-teal edge highlight
-      tropicalLeaf(bx, by, len * 0.96, hw * 0.72, angle, 'rgba(20,18,60,0.55)', 'rgba(30,25,80,0.40)');
+      tropicalLeaf(bx, by, len, hw, angle, '#0a0820', '#0e0c2c');
+      tropicalLeaf(bx, by, len * 0.96, hw * 0.72, angle, 'rgba(18,14,55,0.55)', 'rgba(28,22,72,0.40)');
     });
   }
 
@@ -854,9 +881,10 @@ export function createJungle(canvas) {
     const groundY = H * 0.74;
 
     drawSky();
-    drawCanopy();
+    drawTrunksAndPergola();
+    drawFernCrowns();
     drawGround();
-    drawMidground();
+    drawForeground();
 
     // Bioluminescent layers
     drawAmbientGlow(groundY);
