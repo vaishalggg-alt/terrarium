@@ -36,6 +36,11 @@ import {
   subscribeTundra, getFreezes, addFreeze, thawFreeze, resetTundra,
   frozenToday, freezeStreak,
 } from './tundra-store.js';
+import { createBlossom } from './blossom.js';
+import {
+  subscribeBlossom, getSessions, addSession, resetBlossom,
+  meditatedToday, meditationStreak, totalMinutes,
+} from './blossom-store.js';
 
 const html = htm.bind(h);
 
@@ -46,6 +51,7 @@ const useWater = () => useSyncExternalStore(subscribeDesert, getLogs);
 const useSleep = () => useSyncExternalStore(subscribeJungle, getSleepLogs);
 const useVolcanoLogs = () => useSyncExternalStore(subscribeVolcano, getVolcanoLogs);
 const useFreezes     = () => useSyncExternalStore(subscribeTundra, getFreezes);
+const useSessions = () => useSyncExternalStore(subscribeBlossom, getSessions);
 const useBiome = () => useSyncExternalStore(subscribeBiome, getBiome);
 const useClock = () => useSyncExternalStore(subscribeClock, getClockMode);
 
@@ -489,6 +495,48 @@ function TundraCheckIn({ onDone }) {
     </div>`;
 }
 
+function BlossomWorld() {
+  const ref = useRef(null);
+  const world = useRef(null);
+  const sessions = useSessions();
+
+  useEffect(() => {
+    world.current = createBlossom(ref.current);
+    return () => world.current?.destroy();
+  }, []);
+
+  useEffect(() => {
+    world.current?.setData({ sessions });
+  }, [sessions]);
+
+  return html`<canvas ref=${ref} class="world"></canvas>`;
+}
+
+function BlossomCheckIn({ onDone }) {
+  const [minutes, setMinutes] = useState(10);
+
+  function submit() {
+    addSession(minutes);
+    onDone();
+  }
+
+  const total = totalMinutes();
+
+  return html`
+    <div class="sheet">
+      <h2>Log a meditation</h2>
+      <p class="sub">How long did you sit in stillness? The garden grows more peaceful the longer you stay quiet.</p>
+      <div class="sleep-hours">
+        <span class="sleep-hours-val">${minutes}m</span>
+        <input type="range" min="1" max="120" step="1"
+          value=${minutes} onInput=${(e) => setMinutes(+e.target.value)} />
+        <span class="sleep-hours-label">minutes</span>
+      </div>
+      ${total > 0 && html`<p class="sub">${total} minutes of stillness total 🌸</p>`}
+      <button class="grow blossom" onClick=${submit}>Return to the garden →</button>
+    </div>`;
+}
+
 // ---- biome switcher --------------------------------------------------------
 
 function Switcher({ active }) {
@@ -583,7 +631,21 @@ const TUNDRA = {
   resetMsg: 'Thaw everything and clear the tundra? All frozen thoughts will be lost.',
 };
 
-const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, volcano: VOLCANO, tundra: TUNDRA };
+const BLOSSOM = {
+  World: BlossomWorld,
+  CheckIn: BlossomCheckIn,
+  logo: '🌸',
+  title: 'Your Garden',
+  count: (s) => {
+    const mins = totalMinutes();
+    return s.length === 0 ? 'still and waiting' : `${s.length} sessions · ${mins}m total`;
+  },
+  empty: 'Begin your first meditation',
+  again: (today) => today ? 'Sit again' : 'Log a session',
+  resetMsg: 'Clear all meditation logs? The garden returns to stillness.',
+};
+
+const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, volcano: VOLCANO, tundra: TUNDRA, blossom: BLOSSOM };
 
 // ---- app -------------------------------------------------------------------
 
@@ -612,6 +674,7 @@ function App() {
   const sleepLogs = useSleep();
   const vLogs = useVolcanoLogs();
   const freezes = useFreezes();
+  const sessions = useSessions();
   const [open, setOpen] = useState(false);
 
   const clock = useClock();
@@ -621,18 +684,21 @@ function App() {
     : biome === 'desert' ? logs
     : biome === 'jungle' ? sleepLogs
     : biome === 'tundra' ? freezes
+    : biome === 'blossom' ? sessions
     : vLogs;
   const streak = biome === 'forest' ? checkinStreak()
     : biome === 'ocean' ? letterStreak()
     : biome === 'desert' ? hydrationStreak()
     : biome === 'jungle' ? sleepStreak()
     : biome === 'tundra' ? freezeStreak()
+    : biome === 'blossom' ? meditationStreak()
     : volcanoStreak();
   const today = biome === 'forest' ? checkedInToday()
     : biome === 'ocean' ? bottledToday()
     : biome === 'desert' ? wateredToday()
     : biome === 'jungle' ? sleptToday()
     : biome === 'tundra' ? frozenToday()
+    : biome === 'blossom' ? meditatedToday()
     : volcanoLoggedToday();
 
   const dom = biome === 'forest' ? dominantEmotion() : null;
@@ -648,6 +714,7 @@ function App() {
     else if (biome === 'desert') resetDesert();
     else if (biome === 'jungle') resetJungle();
     else if (biome === 'tundra') resetTundra();
+    else if (biome === 'blossom') resetBlossom();
     else resetVolcano();
   }
 
