@@ -201,13 +201,13 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
   }
 
   // ── cherry blossom trees ──────────────────────────────────────────────────
-  function drawBranch(x, y, angle, len, depth, peace) {
+  function drawBranch(x, y, angle, len, depth, treePeace) {
     if (depth === 0 || len < 4) return;
     const ex = x + Math.cos(angle) * len;
     const ey = y + Math.sin(angle) * len;
     ctx.strokeStyle = depth > 2
-      ? `rgba(50,25,15,${0.75 + peace * 0.15})`
-      : `rgba(80,40,25,${0.6 + peace * 0.15})`;
+      ? `rgba(50,25,15,${0.75 + treePeace * 0.15})`
+      : `rgba(80,40,25,${0.6 + treePeace * 0.15})`;
     ctx.lineWidth = depth * 1.2;
     ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
@@ -215,7 +215,7 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
     if (depth <= 1) {
       // Blossom cluster — size derived from position so it never flickers
       const clusterR = 10 + ((Math.abs(ex * 7 + ey * 3) % 80) / 10);
-      const blA = 0.55 + peace * 0.3;
+      const blA = 0.55 + treePeace * 0.3;
       const bg = ctx.createRadialGradient(ex, ey, 0, ex, ey, clusterR);
       bg.addColorStop(0, `rgba(255,200,210,${blA})`);
       bg.addColorStop(0.6, `rgba(255,170,185,${blA * 0.7})`);
@@ -224,22 +224,30 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
       ctx.beginPath(); ctx.arc(ex, ey, clusterR, 0, TAU); ctx.fill();
     }
 
-    const spread = 0.38 + peace * 0.12;
-    drawBranch(ex, ey, angle - spread, len * 0.68, depth - 1, peace);
-    drawBranch(ex, ey, angle + spread * 0.75, len * 0.72, depth - 1, peace);
-    if (depth > 2) drawBranch(ex, ey, angle - 0.1, len * 0.82, depth - 1, peace);
+    const spread = 0.38 + treePeace * 0.12;
+    drawBranch(ex, ey, angle - spread, len * 0.68, depth - 1, treePeace);
+    drawBranch(ex, ey, angle + spread * 0.75, len * 0.72, depth - 1, treePeace);
+    if (depth > 2) drawBranch(ex, ey, angle - 0.1, len * 0.82, depth - 1, treePeace);
   }
 
   function drawTrees(peace, day) {
+    // Trees start appearing at 70s idle, fully grown at 90s
+    const idleSec = peace * (PEACE_RAMP / 1000);
+    const treePeace = clamp((idleSec - 70) / 20, 0, 1);
+    if (treePeace <= 0) return;
+
     const d = 0.3 + day * 0.55;
+    ctx.save();
+    ctx.globalAlpha = treePeace;
+
     // Left foreground tree
     ctx.save();
-    drawBranch(W * 0.04, H * 0.75, -Math.PI / 2 + 0.22, H * 0.22, 5, peace);
+    drawBranch(W * 0.04, H * 0.75, -Math.PI / 2 + 0.22, H * 0.22, 5, treePeace);
     ctx.restore();
 
     // Right foreground tree
     ctx.save();
-    drawBranch(W * 0.96, H * 0.72, -Math.PI / 2 - 0.18, H * 0.20, 5, peace);
+    drawBranch(W * 0.96, H * 0.72, -Math.PI / 2 - 0.18, H * 0.20, 5, treePeace);
     ctx.restore();
 
     // Background trees (silhouette)
@@ -252,13 +260,15 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
       ctx.quadraticCurveTo(W * tx + th * 0.15, H * ty + th * 0.5, W * tx, H * ty + th);
       ctx.fill();
       // Blossom canopy
-      const bA = 0.45 + peace * 0.25;
+      const bA = 0.45 + treePeace * 0.25;
       const bg2 = ctx.createRadialGradient(W * tx, H * ty + th * 0.2, 0, W * tx, H * ty + th * 0.2, th * 0.6);
       bg2.addColorStop(0, `rgba(255,195,205,${bA})`);
       bg2.addColorStop(1, 'rgba(255,185,195,0)');
       ctx.fillStyle = bg2;
       ctx.beginPath(); ctx.ellipse(W * tx, H * ty + th * 0.25, th * 0.55, th * 0.45, 0, 0, TAU); ctx.fill();
     });
+
+    ctx.restore(); // restore globalAlpha
   }
 
   // ── stone lanterns ────────────────────────────────────────────────────────
