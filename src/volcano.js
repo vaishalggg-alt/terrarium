@@ -388,7 +388,7 @@ export function createVolcano(canvas) {
       const columnH = beautiful
         ? H * (0.28 + Math.sin(time * 0.0029) * 0.06) * flicker
         : H * (0.18 + Math.sin(time * 0.0033) * 0.04) * flicker;
-      const colW = cw * (beautiful ? 0.55 : 0.42);
+      const colW = rimW * (beautiful ? 0.55 : 0.42);
       const topY = craterY - columnH;
       const colk = beautiful ? [255, 230, 80] : [255, 80, 15];
 
