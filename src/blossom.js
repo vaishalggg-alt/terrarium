@@ -31,16 +31,19 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
   let t0 = performance.now();
   let lastActivity = performance.now();
   let disturbance = 0;
+  let frozenPeace = null; // non-null = scene is frozen at this value
 
   // ── peace / stillness ────────────────────────────────────────────────────
   const PEACE_RAMP = 90000; // 90 s to full peace
 
   function peaceLevel() {
+    if (frozenPeace !== null) return frozenPeace;
     return clamp((performance.now() - lastActivity) / PEACE_RAMP, 0, 1);
   }
 
   function onActivity() {
     onCanvasActivity?.();
+    if (frozenPeace !== null) return; // ignore interaction while frozen
     lastActivity = performance.now();
     disturbance = 1;
     for (const p of petals) {
@@ -678,6 +681,13 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
 
   return {
     setData,
+    freezePeace() {
+      frozenPeace = peaceLevel();
+    },
+    unfreezePeace() {
+      frozenPeace = null;
+      lastActivity = performance.now();
+    },
     destroy() {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);

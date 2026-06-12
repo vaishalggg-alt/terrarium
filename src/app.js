@@ -509,6 +509,7 @@ function BlossomWorld() {
   const intervalRef = useRef(null);
 
   function startSession() {
+    world.current?.unfreezePeace();
     startRef.current = Date.now();
     setElapsed(0);
     setLastResult(null);
@@ -524,6 +525,7 @@ function BlossomWorld() {
     const secs = Math.floor((Date.now() - startRef.current) / 1000);
     startRef.current = null;
     setActive(false);
+    world.current?.freezePeace();
     if (secs >= 10) {
       addSession(secs);
       setLastResult(secs);
