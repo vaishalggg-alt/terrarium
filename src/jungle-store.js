@@ -44,29 +44,26 @@ export function sleepStreak() {
 }
 
 // bioluminescence level 0–1 based on recent sleep data (last 14 entries)
-// Hours drive 80% of score — 9h gives hScore=1.0 regardless of quality.
-// Rough mapping: 3h→0.27, 5h→0.44, 6h→0.53, 7h→0.62, 8h→0.71, 9h→0.80+
+// Hours drive 90% of score so 9h unlocks everything regardless of quality.
 export function bioLevel() {
   const recent = _logs.slice(-14);
   if (!recent.length) return 0;
   const avgQ = recent.reduce((s, l) => s + l.quality, 0) / recent.length;
   const avgH = recent.reduce((s, l) => s + l.hours, 0) / recent.length;
-  const qScore = (avgQ - 1) / 2;        // 0–1
-  const hScore = Math.min(avgH / 9, 1); // 0–1, full at 9h
-  return qScore * 0.20 + hScore * 0.80;
+  const qScore = (avgQ - 1) / 2;
+  const hScore = Math.min(avgH / 9, 1);
+  return qScore * 0.10 + hScore * 0.90;
 }
 
-// Thresholds calibrated so 9h sleep reliably unlocks each creature:
-//   ~3h → mushrooms, ~4h → fireflies, ~5h → orchids,
-//   ~6h → frog, ~7h → butterfly, ~9h → jaguar,
-//   9h + good quality → snake, 9h + great quality → spirit deer
+// ~3h mushrooms, ~4h fireflies, ~5h orchids, ~6h frog,
+// ~7h butterfly, ~8h jaguar, ~9h snake, ~9h+ spirit deer
 export const BIO_THRESHOLDS = {
   mushroom:   0.25,
   firefly:    0.35,
   orchid:     0.44,
   frog:       0.53,
   butterfly:  0.62,
-  jaguar:     0.78,
-  snake:      0.86,
-  spiritDeer: 0.93,
+  jaguar:     0.70,
+  snake:      0.78,
+  spiritDeer: 0.86,
 };
