@@ -495,45 +495,96 @@ function TundraCheckIn({ onDone }) {
     </div>`;
 }
 
+// Tiny event bus so BlossomCheckIn can signal BlossomWorld to start a session
+const blossomBus = { fns: new Set(), emit() { for (const f of this.fns) f(); } };
+
 function BlossomWorld() {
   const ref = useRef(null);
   const world = useRef(null);
   const sessions = useSessions();
+  const [active, setActive] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [lastResult, setLastResult] = useState(null); // seconds of last completed session
+  const startRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  function startSession() {
+    startRef.current = Date.now();
+    setElapsed(0);
+    setLastResult(null);
+    setActive(true);
+    intervalRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+  }
+
+  function stopSession() {
+    if (!startRef.current) return;
+    clearInterval(intervalRef.current);
+    const secs = Math.floor((Date.now() - startRef.current) / 1000);
+    startRef.current = null;
+    setActive(false);
+    if (secs >= 10) {
+      addSession(secs);
+      setLastResult(secs);
+      setTimeout(() => setLastResult(null), 5000);
+    }
+  }
+
+  // Listen for "start" signal from check-in sheet
+  useEffect(() => {
+    const unsub = (() => {
+      const fn = () => startSession();
+      blossomBus.fns.add(fn);
+      return () => blossomBus.fns.delete(fn);
+    })();
+    return unsub;
+  }, []);
 
   useEffect(() => {
-    world.current = createBlossom(ref.current);
-    return () => world.current?.destroy();
+    world.current = createBlossom(ref.current, {
+      onCanvasActivity: () => { if (startRef.current) stopSession(); },
+    });
+    return () => { world.current?.destroy(); clearInterval(intervalRef.current); };
   }, []);
 
   useEffect(() => {
     world.current?.setData({ sessions });
   }, [sessions]);
 
-  return html`<canvas ref=${ref} class="world"></canvas>`;
+  const fmt = (s) => s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
+
+  return html`
+    <canvas ref=${ref} class="world"></canvas>
+    ${active && html`
+      <div class="blossom-timer">
+        <span class="blossom-timer-time">${fmt(elapsed)}</span>
+        <span class="blossom-timer-hint">stay still…</span>
+        <button class="blossom-timer-stop" onClick=${stopSession}>stop</button>
+      </div>
+    `}
+    ${lastResult && html`
+      <div class="blossom-result">
+        🌸 ${fmt(lastResult)} of stillness
+      </div>
+    `}
+  `;
 }
 
 function BlossomCheckIn({ onDone }) {
-  const [minutes, setMinutes] = useState(10);
+  const total = totalMinutes();
 
-  function submit() {
-    addSession(minutes);
+  function begin() {
+    blossomBus.emit();
     onDone();
   }
 
-  const total = totalMinutes();
-
   return html`
     <div class="sheet">
-      <h2>Log a meditation</h2>
-      <p class="sub">How long did you sit in stillness? The garden grows more peaceful the longer you stay quiet.</p>
-      <div class="sleep-hours">
-        <span class="sleep-hours-val">${minutes}m</span>
-        <input type="range" min="1" max="120" step="1"
-          value=${minutes} onInput=${(e) => setMinutes(+e.target.value)} />
-        <span class="sleep-hours-label">minutes</span>
-      </div>
-      ${total > 0 && html`<p class="sub">${total} minutes of stillness total 🌸</p>`}
-      <button class="grow blossom" onClick=${submit}>Return to the garden →</button>
+      <h2>Begin stillness</h2>
+      <p class="sub">Tap start, set your phone down, and go still. The garden grows more peaceful the longer you stay quiet. Any movement stops the timer.</p>
+      ${total > 0 && html`<p class="sub" style=${{ marginBottom: '16px' }}>${total} minutes of stillness so far 🌸</p>`}
+      <button class="grow blossom" onClick=${begin}>Start →</button>
     </div>`;
 }
 
@@ -637,8 +688,9 @@ const BLOSSOM = {
   logo: '🌸',
   title: 'Your Garden',
   count: (s) => {
+    if (!s.length) return 'still and waiting';
     const mins = totalMinutes();
-    return s.length === 0 ? 'still and waiting' : `${s.length} sessions · ${mins}m total`;
+    return mins < 1 ? `${s.length} sessions` : `${s.length} sessions · ${mins}m total`;
   },
   empty: 'Begin your first meditation',
   again: (today) => today ? 'Sit again' : 'Log a session',

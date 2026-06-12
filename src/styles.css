@@ -287,6 +287,36 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 .grow.tundra { background: #a8d8f0; color: #123a5a; }
 .grow.blossom { background: #f7c5d5; color: #5a1a2a; }
 
+/* ---- blossom session timer ---- */
+.blossom-timer {
+  position: absolute; top: 76px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255, 240, 245, 0.82); backdrop-filter: blur(8px);
+  padding: 10px 18px; border-radius: 999px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.18);
+  z-index: 3; animation: fadein .4s ease;
+  border: 1px solid rgba(255,190,210,.5);
+}
+.blossom-timer-time {
+  font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600;
+  color: #5a1a2a; min-width: 64px; text-align: center;
+}
+.blossom-timer-hint { font-size: 12px; color: #b06080; }
+.blossom-timer-stop {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  color: #b06080; background: rgba(255,200,215,.5); border: none;
+  border-radius: 999px; padding: 4px 10px; cursor: pointer;
+}
+.blossom-result {
+  position: absolute; top: 76px; left: 50%; transform: translateX(-50%);
+  background: rgba(255, 230, 240, 0.92); backdrop-filter: blur(8px);
+  padding: 10px 22px; border-radius: 999px;
+  font-family: 'Fraunces', serif; font-size: 16px; color: #5a1a2a;
+  box-shadow: 0 4px 20px rgba(0,0,0,.15); z-index: 3;
+  animation: fadein .4s ease;
+  border: 1px solid rgba(255,190,210,.5);
+}
+
 @keyframes slideup { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 

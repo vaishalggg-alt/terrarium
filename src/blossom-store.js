@@ -30,8 +30,8 @@ export function subscribeBlossom(fn) {
 
 export function getSessions() { return state.sessions; }
 
-export function addSession(minutes) {
-  const s = { id: Date.now(), ts: Date.now(), minutes: Math.max(1, Math.round(minutes)) };
+export function addSession(seconds) {
+  const s = { id: Date.now(), ts: Date.now(), seconds: Math.max(1, Math.round(seconds)) };
   state = { ...state, sessions: [...state.sessions, s] };
   persist(); emit();
   return s;
@@ -64,6 +64,10 @@ export function meditationStreak() {
   return streak;
 }
 
+export function totalSeconds() {
+  return state.sessions.reduce((sum, s) => sum + (s.seconds || s.minutes * 60 || 0), 0);
+}
+
 export function totalMinutes() {
-  return state.sessions.reduce((sum, s) => sum + (s.minutes || 0), 0);
+  return Math.floor(totalSeconds() / 60);
 }

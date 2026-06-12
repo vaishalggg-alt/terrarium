@@ -20,7 +20,7 @@ function rng(seed) {
   return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
 }
 
-export function createBlossom(canvas) {
+export function createBlossom(canvas, { onCanvasActivity } = {}) {
   const ctx = canvas.getContext('2d');
   let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
   let sessions = [];
@@ -40,9 +40,9 @@ export function createBlossom(canvas) {
   }
 
   function onActivity() {
+    onCanvasActivity?.();
     lastActivity = performance.now();
     disturbance = 1;
-    // scatter petals on interaction
     for (const p of petals) {
       p.vx += (Math.random() - 0.5) * 1.4;
       p.vy += Math.random() * 0.8;
