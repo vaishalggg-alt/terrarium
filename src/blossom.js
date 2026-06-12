@@ -235,28 +235,170 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
 
   // ── torii gate ────────────────────────────────────────────────────────────
   function drawTorii(day) {
-    const d = 0.18 + day * 0.35;
-    const gx = W * 0.50, gy = H * 0.56;
-    const gw = W * 0.10, gh = H * 0.11;
-    const postW = W * 0.008;
+    const d = 0.22 + day * 0.38;
+    // Position: background, centred, sitting just above the ground horizon
+    const gx = W * 0.50;
+    const baseY = H * 0.594;   // bottom of posts
+    const gw  = W * 0.155;     // half-span between post centres
+    const ph  = H * 0.152;     // post height
+    const pr  = W * 0.0115;    // post radius
 
-    const col = `rgba(${(130*d)|0},${(35*d)|0},${(20*d)|0},0.70)`;
-    ctx.fillStyle = col;
+    // Colour palette
+    const red  = (r, g, b, a) => `rgba(${(r*d)|0},${(g*d)|0},${(b*d)|0},${a})`;
+    const face  = red(195, 52, 22, 0.82);   // front face
+    const shade = red(130, 28, 10, 0.82);   // underside / shadow
+    const hi    = red(220, 75, 38, 0.70);   // top highlight
 
-    // Two vertical posts
-    ctx.beginPath(); ctx.roundRect(gx - gw*0.5 - postW*0.5, gy - gh*0.1, postW, gh, 1); ctx.fill();
-    ctx.beginPath(); ctx.roundRect(gx + gw*0.5 - postW*0.5, gy - gh*0.1, postW, gh, 1); ctx.fill();
+    // Posts lean inward by a small amount
+    const lean = gw * 0.025;
+    const lx = gx - gw;   // left post centre X at base
+    const rx = gx + gw;   // right post centre X at base
+    const lxt = lx + lean; // top of left post (leaned inward)
+    const rxt = rx - lean; // top of right post
 
-    // Lower crossbeam (kasagi underside)
-    ctx.beginPath(); ctx.roundRect(gx - gw*0.56, gy - gh*0.82, gw*1.12, postW*1.4, 1); ctx.fill();
+    const postTop = baseY - ph;
 
-    // Upper curved crossbeam (kasagi)
+    // ── posts (drawn as perspective cylinders: flat rect + ellipse cap) ──
+    ctx.fillStyle = face;
+    // Left post
     ctx.beginPath();
-    ctx.moveTo(gx - gw*0.62, gy - gh*0.92);
-    ctx.quadraticCurveTo(gx, gy - gh*1.05, gx + gw*0.62, gy - gh*0.92);
-    ctx.lineTo(gx + gw*0.62, gy - gh*0.86);
-    ctx.quadraticCurveTo(gx, gy - gh*0.98, gx - gw*0.62, gy - gh*0.86);
+    ctx.moveTo(lx - pr, baseY);
+    ctx.lineTo(lxt - pr, postTop);
+    ctx.lineTo(lxt + pr, postTop);
+    ctx.lineTo(lx + pr, baseY);
     ctx.closePath(); ctx.fill();
+    // Right post
+    ctx.beginPath();
+    ctx.moveTo(rxt - pr, postTop);
+    ctx.lineTo(rx - pr, baseY);
+    ctx.lineTo(rx + pr, baseY);
+    ctx.lineTo(rxt + pr, postTop);
+    ctx.closePath(); ctx.fill();
+    // Post shadow (right edge of each)
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.moveTo(lxt + pr * 0.3, postTop);
+    ctx.lineTo(lx  + pr * 0.3, baseY);
+    ctx.lineTo(lx  + pr,       baseY);
+    ctx.lineTo(lxt + pr,       postTop);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(rxt + pr * 0.3, postTop);
+    ctx.lineTo(rx  + pr * 0.3, baseY);
+    ctx.lineTo(rx  + pr,       baseY);
+    ctx.lineTo(rxt + pr,       postTop);
+    ctx.closePath(); ctx.fill();
+    // Elliptical post tops
+    ctx.fillStyle = hi;
+    ctx.beginPath(); ctx.ellipse(lxt, postTop, pr, pr * 0.32, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(rxt, postTop, pr, pr * 0.32, 0, 0, TAU); ctx.fill();
+
+    // ── nuki (middle tie beam) ─────────────────────────────────────────────
+    const nukiY  = postTop + ph * 0.40;
+    const nukiH  = ph * 0.072;
+    ctx.fillStyle = face;
+    ctx.beginPath();
+    ctx.moveTo(lxt + pr * 0.8, nukiY);
+    ctx.lineTo(rxt - pr * 0.8, nukiY);
+    ctx.lineTo(rxt - pr * 0.8, nukiY + nukiH);
+    ctx.lineTo(lxt + pr * 0.8, nukiY + nukiH);
+    ctx.closePath(); ctx.fill();
+    // Nuki underside
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.moveTo(lxt + pr * 0.8, nukiY + nukiH * 0.55);
+    ctx.lineTo(rxt - pr * 0.8, nukiY + nukiH * 0.55);
+    ctx.lineTo(rxt - pr * 0.8, nukiY + nukiH);
+    ctx.lineTo(lxt + pr * 0.8, nukiY + nukiH);
+    ctx.closePath(); ctx.fill();
+
+    // ── kasagi geometry ────────────────────────────────────────────────────
+    // The kasagi sits at post top. Its top edge sweeps upward at the ends.
+    const kasagiY   = postTop - ph * 0.015;   // sits just above post tops
+    const kasagiH   = ph * 0.115;              // beam thickness
+    const overX     = gw * 0.52;               // how far it extends beyond posts
+    const uplift    = ph * 0.068;              // how much the ends curve upward
+    const endCurl   = ph * 0.055;              // extra end upturn
+
+    // Bottom of kasagi: very slight upward bow
+    const kbL = gx - gw - overX;   // left end X
+    const kbR = gx + gw + overX;   // right end X
+    const kbMidY = kasagiY + kasagiH * 0.1;   // slightly lower in middle
+    const kbEndY = kasagiY + kasagiH * 0.04;  // slightly higher at ends (flat)
+
+    // Top of kasagi: sweeps up at ends
+    const ktMidY = kasagiY - ph * 0.005;      // nearly flat in middle
+    const ktEndY = kasagiY - uplift;           // lifted at ends
+    const ktCurlY = kasagiY - uplift - endCurl; // extra curl at very tips
+
+    // Draw kasagi as a filled shape
+    // Face (front) of kasagi
+    ctx.fillStyle = face;
+    ctx.beginPath();
+    // bottom edge: left end → middle → right end
+    ctx.moveTo(kbL, kbEndY + kasagiH);
+    ctx.quadraticCurveTo(gx, kbMidY + kasagiH, kbR, kbEndY + kasagiH);
+    // right end face (vertical slice)
+    ctx.lineTo(kbR, ktEndY - endCurl * 0.3);
+    // top edge: right → middle → left (with upswept curve)
+    ctx.bezierCurveTo(
+      kbR - overX * 0.25, ktCurlY,
+      gx + gw * 0.6, ktMidY,
+      gx, ktMidY - ph * 0.018
+    );
+    ctx.bezierCurveTo(
+      gx - gw * 0.6, ktMidY,
+      kbL + overX * 0.25, ktCurlY,
+      kbL, ktEndY - endCurl * 0.3
+    );
+    // left end face
+    ctx.lineTo(kbL, kbEndY + kasagiH);
+    ctx.closePath(); ctx.fill();
+
+    // Kasagi underside (darker strip along bottom)
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.moveTo(kbL, kbEndY + kasagiH);
+    ctx.quadraticCurveTo(gx, kbMidY + kasagiH, kbR, kbEndY + kasagiH);
+    ctx.lineTo(kbR, kbEndY + kasagiH * 0.6);
+    ctx.quadraticCurveTo(gx, kbMidY + kasagiH * 0.6, kbL, kbEndY + kasagiH * 0.6);
+    ctx.closePath(); ctx.fill();
+
+    // Kasagi top highlight
+    ctx.fillStyle = hi;
+    ctx.beginPath();
+    ctx.moveTo(kbL + overX * 0.1, ktEndY - endCurl * 0.2);
+    ctx.bezierCurveTo(
+      kbL + overX * 0.3, ktCurlY + endCurl * 0.4,
+      gx - gw * 0.6, ktMidY - ph * 0.005,
+      gx, ktMidY - ph * 0.022
+    );
+    ctx.bezierCurveTo(
+      gx + gw * 0.6, ktMidY - ph * 0.005,
+      kbR - overX * 0.3, ktCurlY + endCurl * 0.4,
+      kbR - overX * 0.1, ktEndY - endCurl * 0.2
+    );
+    ctx.lineTo(kbR - overX * 0.1, ktEndY - endCurl * 0.2 + ph * 0.022);
+    ctx.bezierCurveTo(
+      kbR - overX * 0.3, ktCurlY + endCurl * 0.4 + ph * 0.022,
+      gx + gw * 0.6, ktMidY + ph * 0.017,
+      gx, ktMidY - ph * 0.003
+    );
+    ctx.bezierCurveTo(
+      gx - gw * 0.6, ktMidY + ph * 0.017,
+      kbL + overX * 0.3, ktCurlY + endCurl * 0.4 + ph * 0.022,
+      kbL + overX * 0.1, ktEndY - endCurl * 0.2 + ph * 0.022
+    );
+    ctx.closePath(); ctx.fill();
+
+    // Daiwa — square cap blocks where posts meet the kasagi
+    const daiwaSz = pr * 1.7;
+    ctx.fillStyle = face;
+    ctx.beginPath(); ctx.rect(lxt - daiwaSz, kasagiY - daiwaSz*0.3, daiwaSz*2, daiwaSz*0.75); ctx.fill();
+    ctx.beginPath(); ctx.rect(rxt - daiwaSz, kasagiY - daiwaSz*0.3, daiwaSz*2, daiwaSz*0.75); ctx.fill();
+    ctx.fillStyle = shade;
+    ctx.beginPath(); ctx.rect(lxt - daiwaSz, kasagiY + daiwaSz*0.25, daiwaSz*2, daiwaSz*0.2); ctx.fill();
+    ctx.beginPath(); ctx.rect(rxt - daiwaSz, kasagiY + daiwaSz*0.25, daiwaSz*2, daiwaSz*0.2); ctx.fill();
   }
 
   // ── bamboo ────────────────────────────────────────────────────────────────
