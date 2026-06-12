@@ -70,7 +70,7 @@ export function createOcean(canvas, { onBottleClick } = {}) {
   function wBot() { return H * 0.84; }
   function pY(d) { return wBot() - d * (wBot() - wTop()); }
   function pX(fx, d) { return W * 0.5 + (fx - 0.5) * W * lerp(0.96, 0.18, d); }
-  function pScale(d) { return lerp(2.2, 0.22, d); }
+  function pScale(d) { return lerp(3.2, 0.32, d); }
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
