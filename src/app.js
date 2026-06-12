@@ -436,6 +436,7 @@ function TundraWorld() {
       <div class="overlay ice-overlay" onClick=${() => setViewing(null)}>
         <div class="sheet" onClick=${(e) => e.stopPropagation()}>
           <div class="ice-meta">
+            ${viewing.freeze.private && html`<span class="ice-priv-tag">🔒 Private</span>`}
             <span class="ice-date">Frozen ${fmt(viewing.freeze.ts)}</span>
           </div>
           <p class="ice-body">${viewing.freeze.text}</p>
@@ -451,10 +452,11 @@ function TundraWorld() {
 
 function TundraCheckIn({ onDone }) {
   const [text, setText] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
 
   function submit() {
     if (!text.trim()) return;
-    addFreeze(text);
+    addFreeze(text, isPrivate);
     onDone();
   }
 
@@ -465,6 +467,22 @@ function TundraCheckIn({ onDone }) {
       <textarea class="letter" placeholder="what do you want to freeze away for now…"
         value=${text} rows=${6}
         onInput=${(ev) => setText(ev.target.value)}></textarea>
+      <div class="ice-privacy">
+        <button
+          class=${'ice-priv-btn' + (!isPrivate ? ' on' : '')}
+          onClick=${() => setIsPrivate(false)}>
+          👁 Visible
+        </button>
+        <button
+          class=${'ice-priv-btn' + (isPrivate ? ' on' : '')}
+          onClick=${() => setIsPrivate(true)}>
+          🔒 Private
+        </button>
+      </div>
+      <p class="ice-priv-hint">${isPrivate
+        ? 'A lock icon appears on the ice — the words stay hidden.'
+        : 'Your words show faintly etched into the ice.'
+      }</p>
       <button class=${'grow tundra' + (text.trim() ? '' : ' off')} onClick=${submit}>
         Seal in ice →
       </button>

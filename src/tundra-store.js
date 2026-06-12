@@ -40,11 +40,12 @@ export function getFreezes() {
   return state.freezes;
 }
 
-export function addFreeze(text) {
+export function addFreeze(text, isPrivate = false) {
   const f = {
     id: Date.now(),
     ts: Date.now(),
     text: text.trim(),
+    private: isPrivate,
   };
   state = { ...state, freezes: [...state.freezes, f] };
   persist();

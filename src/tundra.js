@@ -372,14 +372,36 @@ export function createTundra(canvas, { onIceClick } = {}) {
     ctx.roundRect(x + 3, y + 3, w - 6, h - 6, 4);
     ctx.stroke();
 
-    // Etched text inside
-    const raw = freeze.text || '';
-    const label = raw.length > 28 ? raw.slice(0, 28) + '…' : raw;
-    ctx.font = '11px Nunito, system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(220,240,255,0.70)';
+    // Etched content — lock icon for private, truncated text for visible
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(label, cx, cy + 2);
+    if (freeze.private) {
+      // Lock body
+      const lx = cx, ly = cy + 2;
+      const lw = 14, lh = 11, lr = 3;
+      ctx.fillStyle = 'rgba(200,230,255,0.65)';
+      ctx.beginPath();
+      ctx.roundRect(lx - lw / 2, ly - 1, lw, lh, lr);
+      ctx.fill();
+      // Lock shackle
+      ctx.strokeStyle = 'rgba(200,230,255,0.65)';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(lx, ly - 1, 4.5, Math.PI, 0);
+      ctx.stroke();
+      // Keyhole dot
+      ctx.fillStyle = 'rgba(120,180,220,0.8)';
+      ctx.beginPath();
+      ctx.arc(lx, ly + 3.5, 1.8, 0, TAU);
+      ctx.fill();
+    } else {
+      const raw = freeze.text || '';
+      const label = raw.length > 28 ? raw.slice(0, 28) + '…' : raw;
+      ctx.font = '11px Nunito, system-ui, sans-serif';
+      ctx.fillStyle = 'rgba(220,240,255,0.70)';
+      ctx.fillText(label, cx, cy + 2);
+    }
 
     // Glint sweep — a small bright arc that moves across periodically
     const glintT = ((time * 0.00045 * shimmerSpeed + glintPhase / TAU) % 1);
