@@ -8,12 +8,14 @@ export const SOUND_OPTIONS = [
 ];
 
 const CRICKETS_URL = new URL('./assets/crickets.mp3', import.meta.url).href;
+const STREAM_URL   = new URL('./assets/stream.mp3',   import.meta.url).href;
 
 export function createSoundEngine() {
   let actx = null;
   let active = [];
   let current = 'off';
-  let cricketsBuffer = null; // cached decoded audio buffer
+  let cricketsBuffer = null;
+  let streamBuffer   = null;
 
   function ctx() {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -67,19 +69,25 @@ export function createSoundEngine() {
     active.push(src, gain);
   }
 
-  function stream() {
+  async function stream() {
     const c = ctx();
-    const src = noise(c);
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
-    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 60;
-    // LFO to mimic gurgling water
-    const lfo = c.createOscillator(); lfo.frequency.value = 1.4; lfo.type = 'sine';
-    const lfoG = c.createGain(); lfoG.gain.value = 120;
-    lfo.connect(lfoG); lfoG.connect(lp.frequency);
-    const gain = c.createGain(); gain.gain.value = 0.24;
-    src.connect(lp); lp.connect(hp); hp.connect(gain); gain.connect(c.destination);
-    src.start(); lfo.start();
-    active.push(src, lp, hp, lfo, lfoG, gain);
+    if (!streamBuffer) {
+      try {
+        const res = await fetch(STREAM_URL);
+        const ab = await res.arrayBuffer();
+        streamBuffer = await c.decodeAudioData(ab);
+      } catch {
+        return;
+      }
+    }
+    if (current !== 'stream') return;
+    const src = c.createBufferSource();
+    src.buffer = streamBuffer;
+    src.loop = true;
+    const gain = c.createGain(); gain.gain.value = 0.6;
+    src.connect(gain); gain.connect(c.destination);
+    src.start();
+    active.push(src, gain);
   }
 
   return {
