@@ -44,6 +44,8 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 }
 .stat b { display: block; font-size: 17px; font-family: 'Fraunces', serif; }
 .stat span { font-size: 10.5px; color: #5a5d66; }
+.landing-link { text-decoration: none; cursor: pointer; pointer-events: auto; }
+.landing-link:hover { opacity: 0.8; }
 .clock-toggle {
   pointer-events: auto; cursor: pointer; border: none;
   font-family: inherit; transition: transform .12s ease;

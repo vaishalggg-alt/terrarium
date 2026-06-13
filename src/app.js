@@ -811,6 +811,9 @@ function App() {
           </div>
         </div>
         <div class="stats">
+          <a class="stat landing-link" href="./landing.html" title="About Terrarium">
+            <b>ℹ</b><span>about</span>
+          </a>
           <div class="stat"><b>${streak}</b><span>day streak</span></div>
           ${dom && html`<div class="stat"><b>${EMOTIONS[dom].emoji}</b><span>${EMOTIONS[dom].label} season</span></div>`}
           <button class="stat clock-toggle" title="Toggle day / night"
