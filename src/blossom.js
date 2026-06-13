@@ -241,7 +241,7 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
     // Position: background, centred, sitting just above the ground horizon
     const gx = W * 0.50;
     const baseY = H * 0.594;   // bottom of posts
-    const gw  = W * 0.095;     // half-span between post centres
+    const gw  = W * 0.055;     // half-span between post centres
     const ph  = H * 0.152;     // post height
     const pr  = W * 0.0082;    // post radius
 
