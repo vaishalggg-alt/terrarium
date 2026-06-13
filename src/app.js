@@ -630,92 +630,122 @@ const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, 
 
 // ---- map -------------------------------------------------------------------
 
-// Single landmass polygon — outer hull, 15 angular vertices
-const MAP_HULL = [
-  [0.22, 0.11], // 0  upper-left        (desert | forest border)
-  [0.40, 0.07], // 1
-  [0.59, 0.08], // 2  upper             (forest | garden border)
-  [0.74, 0.12], // 3
-  [0.88, 0.26], // 4  upper-right       (garden | ocean border)
-  [0.92, 0.44], // 5
-  [0.89, 0.61], // 6
-  [0.79, 0.77], // 7  right             (ocean   | jungle border)
-  [0.63, 0.89], // 8
-  [0.46, 0.91], // 9  lower             (jungle  | volcano border)
-  [0.28, 0.85], // 10
-  [0.13, 0.73], // 11
-  [0.09, 0.56], // 12 lower-left        (volcano | desert border)
-  [0.11, 0.38], // 13
-  [0.16, 0.21], // 14
+// Organic island outline — smooth Catmull-Rom bezier
+const LAND_PTS = [
+  [0.20,0.14],[0.36,0.07],[0.53,0.08],[0.68,0.12],[0.82,0.20],
+  [0.91,0.34],[0.93,0.50],[0.88,0.65],[0.77,0.79],[0.62,0.88],
+  [0.45,0.91],[0.29,0.86],[0.16,0.76],[0.09,0.61],[0.08,0.45],[0.13,0.30],
 ];
-const MAP_CTR = [0.50, 0.50]; // center point all regions fan out from
 
-// Each region is a polygon: [CENTER, hull[hi[0]], hull[hi[1]], ...]
+// Biome seed positions — Voronoi assigns every pixel on the island to the nearest seed
 const MAP_REGIONS = [
-  { id: 'forest',  label: 'Forest',  emoji: '🌲', hi: [0,1,2],      lx:0.40, ly:0.25, light:'#7ec87a', dark:'#1e4d16' },
-  { id: 'blossom', label: 'Garden',  emoji: '🌸', hi: [2,3,4],      lx:0.72, ly:0.27, light:'#f0a0c8', dark:'#6a2d5e' },
-  { id: 'ocean',   label: 'Ocean',   emoji: '🌊', hi: [4,5,6,7],    lx:0.79, ly:0.53, light:'#5dc8f0', dark:'#14506e' },
-  { id: 'jungle',  label: 'Jungle',  emoji: '🌴', hi: [7,8,9],      lx:0.60, ly:0.76, light:'#a8d870', dark:'#1a5020' },
-  { id: 'volcano', label: 'Volcano', emoji: '🌋', hi: [9,10,11,12], lx:0.24, ly:0.72, light:'#ff7043', dark:'#6a1010' },
-  { id: 'desert',  label: 'Desert',  emoji: '🏜️', hi: [12,13,14,0], lx:0.22, ly:0.37, light:'#fdd835', dark:'#8a6008' },
+  { id:'forest',  label:'Forest',  emoji:'🌲', lx:0.43, ly:0.27, rgb:[68,148,52],  light:'#80cc70' },
+  { id:'blossom', label:'Garden',  emoji:'🌸', lx:0.70, ly:0.27, rgb:[196,108,168],light:'#e898cc' },
+  { id:'ocean',   label:'Ocean',   emoji:'🌊', lx:0.82, ly:0.53, rgb:[44,152,200], light:'#60d0f8' },
+  { id:'jungle',  label:'Jungle',  emoji:'🌴', lx:0.58, ly:0.76, rgb:[44,152,72],  light:'#68d880' },
+  { id:'volcano', label:'Volcano', emoji:'🌋', lx:0.26, ly:0.70, rgb:[212,72,44],  light:'#f09070' },
+  { id:'desert',  label:'Desert',  emoji:'🏜️', lx:0.22, ly:0.40, rgb:[212,172,44], light:'#f0d860' },
 ];
+
+// Draw the island outline as a smooth closed Catmull-Rom spline
+function traceLand(ctx, W, H) {
+  const n = LAND_PTS.length;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const p0 = LAND_PTS[(i-1+n)%n], p1 = LAND_PTS[i];
+    const p2 = LAND_PTS[(i+1)%n], p3 = LAND_PTS[(i+2)%n];
+    const cp1x = (p1[0]+(p2[0]-p0[0])/6)*W, cp1y = (p1[1]+(p2[1]-p0[1])/6)*H;
+    const cp2x = (p2[0]-(p3[0]-p1[0])/6)*W, cp2y = (p2[1]-(p3[1]-p1[1])/6)*H;
+    if (i === 0) ctx.moveTo(p1[0]*W, p1[1]*H);
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0]*W, p2[1]*H);
+  }
+  ctx.closePath();
+}
+
+// Build a Voronoi-coloured ImageData for the island at half resolution
+function buildVoronoi(W, H) {
+  const sw = Math.ceil(W/2), sh = Math.ceil(H/2);
+
+  // Render landmass mask at half size
+  const mc = document.createElement('canvas');
+  mc.width = sw; mc.height = sh;
+  const mCtx = mc.getContext('2d');
+  traceLand(mCtx, sw, sh);
+  mCtx.fillStyle = '#fff';
+  mCtx.fill();
+  const mask = mCtx.getImageData(0, 0, sw, sh).data;
+
+  // Voronoi colour per pixel
+  const imgD = mCtx.createImageData(sw, sh);
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      const pi = (y*sw+x)*4;
+      if (mask[pi+3] < 128) continue;
+      let minD = Infinity, bi = 0;
+      for (let i = 0; i < MAP_REGIONS.length; i++) {
+        const r = MAP_REGIONS[i];
+        const dx = x/sw - r.lx, dy = y/sh - r.ly;
+        const d = dx*dx + dy*dy;
+        if (d < minD) { minD = d; bi = i; }
+      }
+      // Slight top-light so it feels 3D
+      const bright = 1 + (0.5 - y/sh) * 0.28;
+      const [r,g,b] = MAP_REGIONS[bi].rgb;
+      imgD.data[pi]   = Math.min(255, r * bright | 0);
+      imgD.data[pi+1] = Math.min(255, g * bright | 0);
+      imgD.data[pi+2] = Math.min(255, b * bright | 0);
+      imgD.data[pi+3] = 255;
+    }
+  }
+  const vc = document.createElement('canvas');
+  vc.width = sw; vc.height = sh;
+  vc.getContext('2d').putImageData(imgD, 0, 0);
+  return vc;
+}
 
 function MapView({ onSelect }) {
   const ref = useRef(null);
   const hover = useRef(-1);
   const animRef = useRef(null);
   const t = useRef(0);
+  const vcRef = useRef(null); // cached Voronoi canvas
 
   useEffect(() => {
     const canvas = ref.current;
     const ctx = canvas.getContext('2d');
 
+    let ws = 42;
+    const wr = () => { ws=(ws*16807)%2147483647; return(ws-1)/2147483646; };
+    const waves = Array.from({length:20}, () => ({wx:wr(),wy:wr(),rx:55+wr()*130,phase:wr()*Math.PI*2}));
+
     function resize() {
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
+      vcRef.current = buildVoronoi(canvas.width, canvas.height);
     }
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    // Build polygon points for a region in canvas pixels
-    function regionPoly(reg, W, H) {
-      const pts = [[MAP_CTR[0]*W, MAP_CTR[1]*H]];
-      for (const i of reg.hi) pts.push([MAP_HULL[i][0]*W, MAP_HULL[i][1]*H]);
-      return pts;
-    }
-
-    function tracePoly(pts) {
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-      ctx.closePath();
-    }
-
-    // Precompute wave shimmer data
-    let ws = 77;
-    const wr = () => { ws = (ws * 16807) % 2147483647; return (ws-1)/2147483646; };
-    const waves = Array.from({length: 20}, () => ({wx:wr(),wy:wr(),rx:50+wr()*130,phase:wr()*Math.PI*2}));
-
     function drawMap(ts) {
       t.current = ts * 0.001;
       const W = canvas.width, H = canvas.height;
+      if (!vcRef.current) { animRef.current = requestAnimationFrame(drawMap); return; }
       ctx.clearRect(0, 0, W, H);
 
       // Ocean background
       const bg = ctx.createRadialGradient(W*.45, H*.38, 0, W*.5, H*.5, Math.max(W,H)*.85);
       bg.addColorStop(0, '#1e7298');
-      bg.addColorStop(0.55, '#0e4d6a');
-      bg.addColorStop(1, '#082030');
+      bg.addColorStop(0.5, '#0e4d6a');
+      bg.addColorStop(1, '#072030');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Ocean shimmer
+      // Water shimmer
       ctx.save();
-      ctx.strokeStyle = '#4db8e8';
-      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = '#4db8e8'; ctx.lineWidth = 0.7;
       for (const w of waves) {
-        ctx.globalAlpha = 0.035 + 0.025 * Math.sin(t.current*.5 + w.phase);
+        ctx.globalAlpha = 0.03 + 0.02*Math.sin(t.current*.5+w.phase);
         ctx.beginPath();
         ctx.ellipse(w.wx*W, w.wy*H, w.rx, w.rx*.14, 0, 0, Math.PI*2);
         ctx.stroke();
@@ -734,96 +764,64 @@ function MapView({ onSelect }) {
       ctx.fillText('Choose your world', W/2, 16 + Math.round(H*.058));
       ctx.restore();
 
-      // Landmass drop shadow
+      // Island drop shadow
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,.55)';
-      ctx.shadowBlur = 28;
-      ctx.shadowOffsetY = 6;
-      ctx.beginPath();
-      ctx.moveTo(MAP_HULL[0][0]*W, MAP_HULL[0][1]*H);
-      for (let i = 1; i < MAP_HULL.length; i++) ctx.lineTo(MAP_HULL[i][0]*W, MAP_HULL[i][1]*H);
-      ctx.closePath();
-      ctx.fillStyle = '#000';
-      ctx.fill();
+      ctx.shadowColor = 'rgba(0,0,0,.6)'; ctx.shadowBlur = 32; ctx.shadowOffsetY = 8;
+      traceLand(ctx, W, H);
+      ctx.fillStyle = '#000'; ctx.fill();
       ctx.restore();
 
-      // Draw each biome region
-      MAP_REGIONS.forEach((reg, i) => {
-        const hovered = hover.current === i;
-        const pts = regionPoly(reg, W, H);
-        tracePoly(pts);
-
-        const cx = reg.lx * W, cy = reg.ly * H;
-        const grad = ctx.createRadialGradient(cx, cy - H*.04, 0, cx, cy + H*.08, Math.min(W,H)*.35);
-        grad.addColorStop(0, hovered ? reg.light : reg.light + 'cc');
-        grad.addColorStop(0.5, reg.dark + 'ee');
-        grad.addColorStop(1, reg.dark);
-        ctx.fillStyle = grad;
-        ctx.fill();
-      });
-
-      // Internal borders — lines from center to each divider hull point
-      const dividers = [0, 2, 4, 7, 9, 12];
+      // Voronoi biome fill — clipped to island
       ctx.save();
-      ctx.strokeStyle = 'rgba(0,0,0,.55)';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([]);
-      for (const di of dividers) {
-        ctx.beginPath();
-        ctx.moveTo(MAP_CTR[0]*W, MAP_CTR[1]*H);
-        ctx.lineTo(MAP_HULL[di][0]*W, MAP_HULL[di][1]*H);
-        ctx.stroke();
-      }
-      ctx.restore();
+      traceLand(ctx, W, H);
+      ctx.clip();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(vcRef.current, 0, 0, W, H);
 
-      // Outer landmass border
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(MAP_HULL[0][0]*W, MAP_HULL[0][1]*H);
-      for (let i = 1; i < MAP_HULL.length; i++) ctx.lineTo(MAP_HULL[i][0]*W, MAP_HULL[i][1]*H);
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(0,0,0,.7)';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      ctx.restore();
-
-      // Hover glow overlay
+      // Hover glow inside island
       if (hover.current >= 0) {
         const reg = MAP_REGIONS[hover.current];
-        const pts = regionPoly(reg, W, H);
-        tracePoly(pts);
-        ctx.save();
-        ctx.strokeStyle = reg.light;
-        ctx.lineWidth = 3;
-        ctx.shadowColor = reg.light;
-        ctx.shadowBlur = 20;
-        ctx.stroke();
-        ctx.restore();
+        const hx = reg.lx*W, hy = reg.ly*H;
+        const hr = Math.min(W,H)*.22;
+        const hg = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+        hg.addColorStop(0, reg.light + 'aa');
+        hg.addColorStop(1, reg.light + '00');
+        ctx.fillStyle = hg;
+        ctx.beginPath();
+        ctx.ellipse(hx, hy, hr, hr*.8, 0, 0, Math.PI*2);
+        ctx.fill();
       }
+      ctx.restore();
 
-      // Emojis and labels
+      // Coastline
+      ctx.save();
+      traceLand(ctx, W, H);
+      ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.restore();
+
+      // Emojis + labels
       MAP_REGIONS.forEach((reg, i) => {
         const hovered = hover.current === i;
-        const cx = reg.lx * W, cy = reg.ly * H;
-        const eSize = Math.round(Math.min(W,H) * (hovered ? .076 : .068));
+        const cx = reg.lx*W, cy = reg.ly*H;
+        const eSize = Math.round(Math.min(W,H)*(hovered ? 0.082 : 0.070));
         ctx.font = `${eSize}px serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(reg.emoji, cx, cy - eSize*.2);
-
+        ctx.fillText(reg.emoji, cx, cy - eSize*.22);
         ctx.save();
         ctx.fillStyle = '#fff';
         ctx.font = `${hovered ? 'bold ' : ''}${Math.round(Math.min(W,H)*.028)}px Georgia, serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'top';
         ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = hovered ? 8 : 5;
-        ctx.fillText(reg.label, cx, cy + eSize*.52);
+        ctx.fillText(reg.label, cx, cy + eSize*.55);
         ctx.restore();
       });
 
-      // Compass rose
+      // Compass
       const crx = W-50, cry = H-50, crr = 22;
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5;
-      ['N','E','S','W'].forEach((d, i) => {
+      ['N','E','S','W'].forEach((d,i) => {
         const a = i*Math.PI/2 - Math.PI/2;
         ctx.beginPath();
         ctx.moveTo(crx+Math.cos(a)*crr, cry+Math.sin(a)*crr);
@@ -835,7 +833,7 @@ function MapView({ onSelect }) {
       });
       ctx.font = 'bold 9px Georgia,serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#e8f4ff'; ctx.shadowBlur = 3;
-      ['N','E','S','W'].forEach((d, i) => {
+      ['N','E','S','W'].forEach((d,i) => {
         const a = i*Math.PI/2 - Math.PI/2;
         ctx.fillText(d, crx+Math.cos(a)*(crr+11), cry+Math.sin(a)*(crr+11));
       });
@@ -854,17 +852,18 @@ function MapView({ onSelect }) {
     const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const my = (e.clientY - rect.top) * (canvas.height / rect.height);
     const W = canvas.width, H = canvas.height;
+    // Check inside island
     const ctx2 = canvas.getContext('2d');
-    for (let i = MAP_REGIONS.length - 1; i >= 0; i--) {
-      const reg = MAP_REGIONS[i];
-      ctx2.beginPath();
-      const c = [MAP_CTR[0]*W, MAP_CTR[1]*H];
-      ctx2.moveTo(c[0], c[1]);
-      for (const hi of reg.hi) ctx2.lineTo(MAP_HULL[hi][0]*W, MAP_HULL[hi][1]*H);
-      ctx2.closePath();
-      if (ctx2.isPointInPath(mx, my)) return i;
-    }
-    return -1;
+    traceLand(ctx2, W, H);
+    if (!ctx2.isPointInPath(mx, my)) return -1;
+    // Nearest seed = Voronoi region
+    let minD = Infinity, best = -1;
+    MAP_REGIONS.forEach((r, i) => {
+      const dx = mx/W - r.lx, dy = my/H - r.ly;
+      const d = dx*dx + dy*dy;
+      if (d < minD) { minD = d; best = i; }
+    });
+    return best;
   }
 
   function onMouseMove(e) {
