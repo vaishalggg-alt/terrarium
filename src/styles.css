@@ -46,6 +46,16 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 .stat span { font-size: 10.5px; color: #5a5d66; }
 .landing-link { text-decoration: none; cursor: pointer; pointer-events: auto; }
 .landing-link:hover { opacity: 0.8; }
+.map-btn { background: none; border: none; color: inherit; font: inherit; cursor: pointer; pointer-events: auto; }
+.map-btn:hover { opacity: 0.8; }
+
+/* ---- map screen ---- */
+.map-screen { background: #10131a; }
+.map-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
 .clock-toggle {
   pointer-events: auto; cursor: pointer; border: none;
   font-family: inherit; transition: transform .12s ease;

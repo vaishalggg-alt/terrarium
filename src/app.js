@@ -628,6 +628,200 @@ const BLOSSOM = {
 
 const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, volcano: VOLCANO, blossom: BLOSSOM };
 
+// ---- map -------------------------------------------------------------------
+
+const MAP_REGIONS = [
+  { id: 'forest',  label: 'Forest',  emoji: '🌲', x: 0.48, y: 0.22, color: '#4a7c3f', glow: '#6dbf5a' },
+  { id: 'ocean',   label: 'Ocean',   emoji: '🌊', x: 0.80, y: 0.52, color: '#2a6b8a', glow: '#4fc3f7' },
+  { id: 'desert',  label: 'Desert',  emoji: '🏜️', x: 0.18, y: 0.42, color: '#b8860b', glow: '#fdd835' },
+  { id: 'jungle',  label: 'Jungle',  emoji: '🌴', x: 0.58, y: 0.76, color: '#2e7d32', glow: '#aed581' },
+  { id: 'volcano', label: 'Volcano', emoji: '🌋', x: 0.24, y: 0.70, color: '#8b1a1a', glow: '#ff7043' },
+  { id: 'blossom', label: 'Garden',  emoji: '🌸', x: 0.75, y: 0.25, color: '#7b3f6e', glow: '#f48fb1' },
+];
+
+function MapView({ onSelect }) {
+  const ref = useRef(null);
+  const hover = useRef(-1);
+  const animRef = useRef(null);
+  const t = useRef(0);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+
+    function rng(seed) {
+      let s = seed;
+      return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+    }
+
+    function drawMap(ts) {
+      t.current = ts * 0.001;
+      const W = canvas.width, H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Parchment background
+      const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
+      bg.addColorStop(0, '#f5e6c8');
+      bg.addColorStop(0.6, '#e8d5a3');
+      bg.addColorStop(1, '#c9a96e');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Aged paper texture — faint vein lines
+      const r = rng(42);
+      ctx.save();
+      ctx.globalAlpha = 0.07;
+      ctx.strokeStyle = '#8b6914';
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i < 30; i++) {
+        ctx.beginPath();
+        ctx.moveTo(r() * W, r() * H);
+        ctx.bezierCurveTo(r()*W, r()*H, r()*W, r()*H, r()*W, r()*H);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Border frame
+      ctx.save();
+      ctx.strokeStyle = '#8b6914';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(10, 10, W - 20, H - 20);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(16, 16, W - 32, H - 32);
+      ctx.restore();
+
+      // Title
+      ctx.save();
+      ctx.fillStyle = '#5c3d0e';
+      ctx.font = `bold ${Math.round(H * 0.045)}px Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText('TERRARIUM', W / 2, 26);
+      ctx.font = `italic ${Math.round(H * 0.022)}px Georgia, serif`;
+      ctx.fillText('Choose your world', W / 2, 26 + Math.round(H * 0.05));
+      ctx.restore();
+
+      // Draw terrain blobs for each region
+      MAP_REGIONS.forEach((reg, i) => {
+        const cx = reg.x * W, cy = reg.y * H;
+        const rad = Math.min(W, H) * 0.11;
+        const hovered = hover.current === i;
+        const pulse = hovered ? 1 + Math.sin(t.current * 4) * 0.06 : 1;
+        const r2 = rng(i * 99 + 7);
+
+        // Terrain blob
+        ctx.save();
+        if (hovered) {
+          ctx.shadowColor = reg.glow;
+          ctx.shadowBlur = 24;
+        }
+        ctx.beginPath();
+        const pts = 10;
+        for (let p = 0; p < pts; p++) {
+          const angle = (p / pts) * Math.PI * 2;
+          const jitter = 0.78 + r2() * 0.38;
+          const bx = cx + Math.cos(angle) * rad * jitter * pulse;
+          const by = cy + Math.sin(angle) * rad * jitter * pulse;
+          p === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
+        }
+        ctx.closePath();
+        const grad = ctx.createRadialGradient(cx - rad*0.2, cy - rad*0.2, 0, cx, cy, rad * 1.2);
+        grad.addColorStop(0, reg.glow + 'cc');
+        grad.addColorStop(0.6, reg.color + 'aa');
+        grad.addColorStop(1, reg.color + '44');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = hovered ? reg.glow : reg.color + '88';
+        ctx.lineWidth = hovered ? 2.5 : 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // Emoji
+        const emojiSize = Math.round(Math.min(W,H) * (hovered ? 0.072 : 0.065));
+        ctx.font = `${emojiSize}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(reg.emoji, cx, cy - emojiSize * 0.1);
+
+        // Label
+        ctx.save();
+        ctx.fillStyle = hovered ? '#2c1a0e' : '#4a2e0a';
+        ctx.font = `${hovered ? 'bold ' : ''}${Math.round(Math.min(W,H) * 0.028)}px Georgia, serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(reg.label, cx, cy + emojiSize * 0.65);
+        ctx.restore();
+      });
+
+      // Decorative compass rose (bottom-right)
+      const cx2 = W - 52, cy2 = H - 52, cr = 28;
+      ctx.save();
+      ctx.strokeStyle = '#8b6914';
+      ctx.fillStyle = '#8b6914';
+      ctx.lineWidth = 1;
+      ['N','E','S','W'].forEach((d,i) => {
+        const a = i * Math.PI / 2 - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx2 + Math.cos(a) * cr, cy2 + Math.sin(a) * cr);
+        ctx.lineTo(cx2 + Math.cos(a + Math.PI/4) * cr * 0.4, cy2 + Math.sin(a + Math.PI/4) * cr * 0.4);
+        ctx.lineTo(cx2, cy2);
+        ctx.closePath();
+        ctx.fillStyle = i === 0 ? '#8b1a1a' : '#8b6914';
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = `bold 10px Georgia`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#3d1f00';
+        ctx.fillText(d, cx2 + Math.cos(a) * (cr + 11), cy2 + Math.sin(a) * (cr + 11));
+      });
+      ctx.restore();
+
+      animRef.current = requestAnimationFrame(drawMap);
+    }
+
+    animRef.current = requestAnimationFrame(drawMap);
+    return () => { cancelAnimationFrame(animRef.current); ro.disconnect(); };
+  }, []);
+
+  function getRegionAt(e) {
+    const canvas = ref.current;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const W = canvas.width, H = canvas.height;
+    let best = -1, bestD = Infinity;
+    MAP_REGIONS.forEach((reg, i) => {
+      const dx = mx - reg.x * W, dy = my - reg.y * H;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      const rad = Math.min(W, H) * 0.11;
+      if (d < rad * 1.1 && d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+
+  function onMouseMove(e) {
+    hover.current = getRegionAt(e);
+    ref.current.style.cursor = hover.current >= 0 ? 'pointer' : 'default';
+  }
+  function onMouseLeave() { hover.current = -1; }
+  function onClick(e) {
+    const i = getRegionAt(e);
+    if (i >= 0) onSelect(MAP_REGIONS[i].id);
+  }
+
+  return html`<canvas ref=${ref} class="map-canvas"
+    onMouseMove=${onMouseMove} onMouseLeave=${onMouseLeave} onClick=${onClick} />`;
+}
+
 // ---- app -------------------------------------------------------------------
 
 function SoundBar() {
@@ -656,6 +850,7 @@ function App() {
   const vLogs = useVolcanoLogs();
   const sessions = useSessions();
   const [open, setOpen] = useState(false);
+  const [showMap, setShowMap] = useState(true);
 
   const clock = useClock();
   const cfg = CONFIGS[biome];
@@ -694,6 +889,11 @@ function App() {
     else resetVolcano();
   }
 
+  if (showMap) return html`
+    <div class="app map-screen">
+      <${MapView} onSelect=${(id) => { setBiome(id); setShowMap(false); }} />
+    </div>`;
+
   return html`
     <div class=${'app ' + biome}>
       <${cfg.World} key=${biome} />
@@ -707,6 +907,9 @@ function App() {
           </div>
         </div>
         <div class="stats">
+          <button class="stat map-btn" onClick=${() => setShowMap(true)} title="World Map">
+            <b>🗺</b><span>map</span>
+          </button>
           <a class="stat landing-link" href="./landing.html" title="About Terrarium">
             <b>ℹ</b><span>about</span>
           </a>
