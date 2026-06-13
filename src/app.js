@@ -639,6 +639,23 @@ const MAP_REGIONS = [
   { id: 'jungle',  label: 'Jungle',  emoji: '🌴', x: 0.56, y: 0.68, color: '#1a5c28', glow: '#aed581' },
 ];
 
+// Hand-crafted territory shapes as [angle_fraction, radius_fraction] pairs
+// Drawn as smooth Catmull-Rom splines so they look like real map regions
+const REGION_SHAPES = [
+  // forest — wide north territory
+  [[0,1],[.1,.85],[.2,1.05],[.35,.9],[.5,1.1],[.65,.85],[.8,1.05],[.9,.8],[1,1]],
+  // garden — compact northeast
+  [[0,.9],[.15,1.1],[.3,.85],[.5,1.05],[.7,.9],[.85,1.0],[1,.9]],
+  // ocean — tall east coast
+  [[0,1],[.12,.8],[.28,1.1],[.45,.85],[.6,1.05],[.75,.8],[.9,1.0],[1,1]],
+  // desert — wide west territory
+  [[0,.95],[.15,1.1],[.3,.8],[.48,1.05],[.65,.85],[.82,1.0],[1,.95]],
+  // volcano — compact southwest, jagged peaks
+  [[0,1],[.1,.7],[.22,1.0],[.35,.75],[.5,1.1],[.65,.8],[.8,.95],[.92,.75],[1,1]],
+  // jungle — lush south, wide
+  [[0,.9],[.12,1.1],[.28,.8],[.45,1.05],[.62,.85],[.78,1.1],[.9,.8],[1,.9]],
+];
+
 function MapView({ onSelect }) {
   const ref = useRef(null);
   const hover = useRef(-1);
@@ -657,15 +674,27 @@ function MapView({ onSelect }) {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    function rng(seed) {
-      let s = seed;
-      return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+    // Draw smooth closed spline (Catmull-Rom → bezier)
+    function smoothPath(pts) {
+      const n = pts.length;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const p0 = pts[(i - 1 + n) % n], p1 = pts[i];
+        const p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+        const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+        const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+        const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+        const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+        i === 0 ? ctx.moveTo(p1[0], p1[1]) : ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
+      }
+      ctx.closePath();
     }
 
-    // Stable random data (seeded, computed once)
-    const waveRng = rng(77);
-    const waves = Array.from({length: 18}, () => ({
-      wx: waveRng(), wy: waveRng(), ww: 40 + waveRng() * 120, phase: waveRng() * Math.PI * 2,
+    // Precompute wave positions
+    let wSeed = 77;
+    const wr = () => { wSeed = (wSeed * 16807) % 2147483647; return (wSeed - 1) / 2147483646; };
+    const waves = Array.from({length: 22}, () => ({
+      wx: wr(), wy: wr(), rx: 60 + wr() * 140, phase: wr() * Math.PI * 2,
     }));
 
     function drawMap(ts) {
@@ -673,161 +702,127 @@ function MapView({ onSelect }) {
       const W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Ocean background
-      const bg = ctx.createLinearGradient(0, 0, W, H);
-      bg.addColorStop(0, '#0d3d5c');
-      bg.addColorStop(0.5, '#1a6080');
-      bg.addColorStop(1, '#0a2e45');
+      // Deep ocean background
+      const bg = ctx.createRadialGradient(W*0.5, H*0.4, 0, W*0.5, H*0.5, Math.max(W,H)*0.8);
+      bg.addColorStop(0, '#1a6a8a');
+      bg.addColorStop(0.5, '#0f4d6e');
+      bg.addColorStop(1, '#082840');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Animated ocean wave ripples
+      // Subtle animated water shimmer lines
       ctx.save();
-      ctx.globalAlpha = 0.07;
-      ctx.strokeStyle = '#7dd4f8';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#4db8e8';
+      ctx.lineWidth = 0.8;
       for (const w of waves) {
+        const alpha = 0.04 + 0.03 * Math.sin(t.current * 0.5 + w.phase);
+        ctx.globalAlpha = alpha;
         ctx.beginPath();
-        ctx.ellipse(w.wx * W + Math.sin(t.current * 0.4 + w.phase) * 6, w.wy * H, w.ww, w.ww * 0.18, 0, 0, Math.PI * 2);
+        ctx.ellipse(w.wx * W, w.wy * H, w.rx, w.rx * 0.15, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.restore();
 
       // Title
       ctx.save();
-      ctx.fillStyle = '#a8d8f0';
-      ctx.font = `bold ${Math.round(H * 0.05)}px Georgia, serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.shadowColor = '#000';
-      ctx.shadowBlur = 8;
-      ctx.fillText('TERRARIUM', W / 2, 20);
-      ctx.font = `italic ${Math.round(H * 0.022)}px Georgia, serif`;
-      ctx.fillStyle = '#7ec8e8';
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#c8e8f8';
+      ctx.font = `bold ${Math.round(H * 0.052)}px Georgia, serif`;
+      ctx.fillText('TERRARIUM', W / 2, 18);
+      ctx.fillStyle = '#7ecce8';
+      ctx.font = `italic ${Math.round(H * 0.023)}px Georgia, serif`;
       ctx.shadowBlur = 4;
-      ctx.fillText('Choose your world', W / 2, 20 + Math.round(H * 0.055));
+      ctx.fillText('Choose your world', W / 2, 18 + Math.round(H * 0.06));
       ctx.restore();
 
-      // Draw landmass base (combined sandy shore behind all blobs)
-      const landCX = W * 0.50, landCY = H * 0.48;
-      const landR = Math.min(W, H) * 0.36;
-      ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 30;
-      const landBase = rng(999);
-      ctx.beginPath();
-      const lpts = 14;
-      for (let p = 0; p < lpts; p++) {
-        const angle = (p / lpts) * Math.PI * 2;
-        const jitter = 0.72 + landBase() * 0.36;
-        const bx = landCX + Math.cos(angle) * landR * jitter;
-        const by = landCY + Math.sin(angle) * landR * jitter;
-        p === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
-      }
-      ctx.closePath();
-      const shoreGrad = ctx.createRadialGradient(landCX, landCY, 0, landCX, landCY, landR);
-      shoreGrad.addColorStop(0, '#c8a96e');
-      shoreGrad.addColorStop(0.7, '#b89858');
-      shoreGrad.addColorStop(1, '#d4b882');
-      ctx.fillStyle = shoreGrad;
-      ctx.fill();
-      ctx.restore();
-
-      // Beach ring (lighter sandy edge)
-      ctx.save();
-      const beachBase = rng(888);
-      ctx.beginPath();
-      const bpts = 14;
-      for (let p = 0; p < bpts; p++) {
-        const angle = (p / bpts) * Math.PI * 2;
-        const jitter = 0.70 + beachBase() * 0.35;
-        const bx = landCX + Math.cos(angle) * (landR * jitter + 14);
-        const by = landCY + Math.sin(angle) * (landR * jitter + 14);
-        p === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = '#e8d4a0';
-      ctx.lineWidth = 10;
-      ctx.globalAlpha = 0.45;
-      ctx.stroke();
-      ctx.restore();
-
-      // Draw terrain blobs for each region
-      const rad = Math.min(W, H) * 0.155;
+      // Biome regions using smooth splines
+      const rad = Math.min(W, H) * 0.175;
       MAP_REGIONS.forEach((reg, i) => {
         const cx = reg.x * W, cy = reg.y * H;
         const hovered = hover.current === i;
-        const pulse = hovered ? 1 + Math.sin(t.current * 4) * 0.05 : 1;
-        const r2 = rng(i * 137 + 13);
+        const scale = hovered ? 1 + Math.sin(t.current * 3.5) * 0.03 : 1;
+        const shape = REGION_SHAPES[i];
+
+        // Build world-space points from shape definition
+        const pts = shape.map(([af, rf]) => {
+          const angle = af * Math.PI * 2 - Math.PI / 2;
+          const r = rf * rad * scale;
+          return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r];
+        });
 
         ctx.save();
         if (hovered) {
           ctx.shadowColor = reg.glow;
-          ctx.shadowBlur = 28;
+          ctx.shadowBlur = 32;
+        } else {
+          ctx.shadowColor = 'rgba(0,0,0,0.4)';
+          ctx.shadowBlur = 12;
         }
-        ctx.beginPath();
-        const pts = 12;
-        for (let p = 0; p < pts; p++) {
-          const angle = (p / pts) * Math.PI * 2;
-          const jitter = 0.76 + r2() * 0.36;
-          const bx = cx + Math.cos(angle) * rad * jitter * pulse;
-          const by = cy + Math.sin(angle) * rad * jitter * pulse;
-          p === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
-        }
-        ctx.closePath();
-        const grad = ctx.createRadialGradient(cx - rad*0.25, cy - rad*0.25, 0, cx, cy, rad * 1.1);
-        grad.addColorStop(0, reg.glow + 'dd');
-        grad.addColorStop(0.55, reg.color + 'cc');
-        grad.addColorStop(1, reg.color + '77');
+        smoothPath(pts);
+
+        // Rich terrain gradient
+        const grad = ctx.createRadialGradient(cx - rad*0.2, cy - rad*0.3, 0, cx, cy, rad * 1.15);
+        grad.addColorStop(0, reg.glow);
+        grad.addColorStop(0.45, reg.color);
+        grad.addColorStop(1, reg.color + 'bb');
         ctx.fillStyle = grad;
         ctx.fill();
-        ctx.strokeStyle = hovered ? reg.glow : reg.glow + '55';
+
+        // Border
+        ctx.shadowBlur = 0;
+        smoothPath(pts);
+        ctx.strokeStyle = hovered ? reg.glow : 'rgba(255,255,255,0.25)';
         ctx.lineWidth = hovered ? 3 : 1.5;
         ctx.stroke();
         ctx.restore();
 
         // Emoji
-        const emojiSize = Math.round(Math.min(W,H) * (hovered ? 0.08 : 0.072));
-        ctx.font = `${emojiSize}px serif`;
+        const eSize = Math.round(Math.min(W,H) * (hovered ? 0.082 : 0.074));
+        ctx.font = `${eSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(reg.emoji, cx, cy - emojiSize * 0.15);
+        ctx.fillText(reg.emoji, cx, cy - eSize * 0.18);
 
         // Label
         ctx.save();
-        ctx.fillStyle = hovered ? '#ffffff' : '#e8f4ff';
-        ctx.font = `${hovered ? 'bold ' : ''}${Math.round(Math.min(W,H) * 0.028)}px Georgia, serif`;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${hovered ? 'bold ' : ''}${Math.round(Math.min(W,H) * 0.03)}px Georgia, serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.shadowColor = '#000';
-        ctx.shadowBlur = hovered ? 6 : 4;
-        ctx.fillText(reg.label, cx, cy + emojiSize * 0.62);
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = hovered ? 8 : 5;
+        ctx.fillText(reg.label, cx, cy + eSize * 0.58);
         ctx.restore();
       });
 
-      // Compass rose (bottom-right)
-      const crx = W - 56, cry = H - 56, crr = 26;
+      // Compass rose
+      const crx = W - 52, cry = H - 52, crr = 24;
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 5;
       ['N','E','S','W'].forEach((d, i) => {
         const a = i * Math.PI / 2 - Math.PI / 2;
         ctx.beginPath();
         ctx.moveTo(crx + Math.cos(a) * crr, cry + Math.sin(a) * crr);
-        ctx.lineTo(crx + Math.cos(a + Math.PI/4) * crr * 0.38, cry + Math.sin(a + Math.PI/4) * crr * 0.38);
+        ctx.lineTo(crx + Math.cos(a + Math.PI/4) * crr * 0.35, cry + Math.sin(a + Math.PI/4) * crr * 0.35);
         ctx.lineTo(crx, cry);
         ctx.closePath();
-        ctx.fillStyle = i === 0 ? '#e84040' : '#d4b882';
+        ctx.fillStyle = i === 0 ? '#e84040' : '#c8dff0';
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
-        ctx.font = `bold 10px Georgia, serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#e8f4ff';
-        ctx.shadowBlur = 3;
-        ctx.fillText(d, crx + Math.cos(a) * (crr + 12), cry + Math.sin(a) * (crr + 12));
+      });
+      ctx.font = `bold 9px Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e8f4ff';
+      ['N','E','S','W'].forEach((d, i) => {
+        const a = i * Math.PI / 2 - Math.PI / 2;
+        ctx.fillText(d, crx + Math.cos(a) * (crr + 11), cry + Math.sin(a) * (crr + 11));
       });
       ctx.restore();
 
