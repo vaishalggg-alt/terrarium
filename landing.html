@@ -12,7 +12,6 @@
     --accent: #e8704a; --volcano: #c94a1a; --cherry: #e8a0b4; --cherry-bg: #fdf0f4;
     --ocean: #3a7fc1; --ocean-bg: #f0f6ff; --jungle: #2d7a4a; --jungle-bg: #f0faf4;
     --forest: #5a8a3a; --forest-bg: #f4faf0; --oasis: #d4a030; --oasis-bg: #fdf8e8;
-    --tundra: #6aa0c8; --tundra-bg: #f0f6fc;
   }
   html { scroll-behavior: smooth; }
   body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--ink); overflow-x: hidden; }
@@ -193,9 +192,6 @@
   .b-oasis { background: var(--oasis-bg); }
   .b-oasis .biome-visual { background: linear-gradient(145deg, #1a0e04, #0e1a06); }
   .b-oasis .biome-tag { background: #faefd4; color: #a07820; }
-  .b-tundra { background: var(--tundra-bg); }
-  .b-tundra .biome-visual { background: linear-gradient(145deg, #0a1828, #0e2038); }
-  .b-tundra .biome-tag { background: #d8ecf8; color: var(--tundra); }
 
   /* ABOUT */
   .about { background: var(--warm-white); padding: 90px 24px; }
@@ -421,19 +417,6 @@
       <span class="biome-tag" contenteditable="true">Hydration</span>
       <h3 contenteditable="true">The Oasis</h3>
       <p contenteditable="true">In the middle of the desert, water is everything. The more you drink, the more life gathers at the pool — flowers, shade, creatures finding their way in from the heat. Small habit, big world. It's the quietest biome, but somehow the most satisfying to tend.</p>
-    </div>
-  </div>
-</section>
-<div class="add-textbox-zone"><button class="add-textbox-btn" onclick="addTextbox(this)">+ Add text block here</button></div>
-
-<!-- TUNDRA -->
-<section class="biome b-tundra">
-  <div class="biome-inner reveal">
-    <div class="biome-visual"><span class="bv-emoji">🌨️</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
-    <div class="biome-content">
-      <span class="biome-tag" contenteditable="true">Processing</span>
-      <h3 contenteditable="true">The Tundra</h3>
-      <p contenteditable="true">Not everything needs to be processed right now. Some things just need somewhere to go. Speak it, type it, and watch it freeze — sealed safely in the ice, waiting patiently until you're ready to thaw it. The tundra doesn't rush you. It just keeps things safe until you are.</p>
     </div>
   </div>
 </section>

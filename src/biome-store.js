@@ -10,7 +10,6 @@ export const BIOMES = [
   { id: 'desert', label: 'Desert', emoji: '🏜️' },
   { id: 'jungle',  label: 'Jungle',  emoji: '🌴' },
   { id: 'volcano', label: 'Volcano', emoji: '🌋' },
-  { id: 'tundra',  label: 'Tundra',  emoji: '🌨️' },
   { id: 'blossom', label: 'Garden',  emoji: '🌸' },
 ];
 
