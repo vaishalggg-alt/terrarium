@@ -78,10 +78,18 @@ export function createDesert(canvas) {
     });
   }
 
+  let firstSet = true;
   function setData({ fill: f, litres: l, animals: a }) {
     const rebuild = (f >= 0.6) !== (fill >= 0.6) || (f >= 0.3) !== (fill >= 0.3);
     fill = f; litres = l || 0;
     animals = a || { fox: false, snake: false, coyote: false, owl: false, camel: false };
+    // On the very first setData call, if animals are already present wind the
+    // clock forward so they appear at the pool immediately (no walk-in replay).
+    if (firstSet) {
+      firstSet = false;
+      const maxDelay = 14000 + WALK_MS; // camel delay + walk duration
+      t0 = performance.now() - maxDelay;
+    }
     if (rebuild) rebuildBirds();
   }
 
