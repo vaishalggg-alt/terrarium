@@ -630,30 +630,34 @@ const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, 
 
 // ---- map -------------------------------------------------------------------
 
-const MAP_REGIONS = [
-  { id: 'forest',  label: 'Forest',  emoji: '🌲', x: 0.44, y: 0.28, color: '#2d6a1f', glow: '#6dbf5a' },
-  { id: 'blossom', label: 'Garden',  emoji: '🌸', x: 0.62, y: 0.24, color: '#7b3f6e', glow: '#f48fb1' },
-  { id: 'ocean',   label: 'Ocean',   emoji: '🌊', x: 0.70, y: 0.50, color: '#1a5c7a', glow: '#4fc3f7' },
-  { id: 'desert',  label: 'Desert',  emoji: '🏜️', x: 0.30, y: 0.44, color: '#9a7010', glow: '#fdd835' },
-  { id: 'volcano', label: 'Volcano', emoji: '🌋', x: 0.36, y: 0.66, color: '#7a1a1a', glow: '#ff7043' },
-  { id: 'jungle',  label: 'Jungle',  emoji: '🌴', x: 0.56, y: 0.68, color: '#1a5c28', glow: '#aed581' },
+// Single landmass polygon — outer hull, 15 angular vertices
+const MAP_HULL = [
+  [0.22, 0.11], // 0  upper-left        (desert | forest border)
+  [0.40, 0.07], // 1
+  [0.59, 0.08], // 2  upper             (forest | garden border)
+  [0.74, 0.12], // 3
+  [0.88, 0.26], // 4  upper-right       (garden | ocean border)
+  [0.92, 0.44], // 5
+  [0.89, 0.61], // 6
+  [0.79, 0.77], // 7  right             (ocean   | jungle border)
+  [0.63, 0.89], // 8
+  [0.46, 0.91], // 9  lower             (jungle  | volcano border)
+  [0.28, 0.85], // 10
+  [0.13, 0.73], // 11
+  [0.09, 0.56], // 12 lower-left        (volcano | desert border)
+  [0.11, 0.38], // 13
+  [0.16, 0.21], // 14
 ];
+const MAP_CTR = [0.50, 0.50]; // center point all regions fan out from
 
-// Hand-crafted territory shapes as [angle_fraction, radius_fraction] pairs
-// Drawn as smooth Catmull-Rom splines so they look like real map regions
-const REGION_SHAPES = [
-  // forest — wide north territory
-  [[0,1],[.1,.85],[.2,1.05],[.35,.9],[.5,1.1],[.65,.85],[.8,1.05],[.9,.8],[1,1]],
-  // garden — compact northeast
-  [[0,.9],[.15,1.1],[.3,.85],[.5,1.05],[.7,.9],[.85,1.0],[1,.9]],
-  // ocean — tall east coast
-  [[0,1],[.12,.8],[.28,1.1],[.45,.85],[.6,1.05],[.75,.8],[.9,1.0],[1,1]],
-  // desert — wide west territory
-  [[0,.95],[.15,1.1],[.3,.8],[.48,1.05],[.65,.85],[.82,1.0],[1,.95]],
-  // volcano — compact southwest, jagged peaks
-  [[0,1],[.1,.7],[.22,1.0],[.35,.75],[.5,1.1],[.65,.8],[.8,.95],[.92,.75],[1,1]],
-  // jungle — lush south, wide
-  [[0,.9],[.12,1.1],[.28,.8],[.45,1.05],[.62,.85],[.78,1.1],[.9,.8],[1,.9]],
+// Each region is a polygon: [CENTER, hull[hi[0]], hull[hi[1]], ...]
+const MAP_REGIONS = [
+  { id: 'forest',  label: 'Forest',  emoji: '🌲', hi: [0,1,2],      lx:0.40, ly:0.25, light:'#7ec87a', dark:'#1e4d16' },
+  { id: 'blossom', label: 'Garden',  emoji: '🌸', hi: [2,3,4],      lx:0.72, ly:0.27, light:'#f0a0c8', dark:'#6a2d5e' },
+  { id: 'ocean',   label: 'Ocean',   emoji: '🌊', hi: [4,5,6,7],    lx:0.79, ly:0.53, light:'#5dc8f0', dark:'#14506e' },
+  { id: 'jungle',  label: 'Jungle',  emoji: '🌴', hi: [7,8,9],      lx:0.60, ly:0.76, light:'#a8d870', dark:'#1a5020' },
+  { id: 'volcano', label: 'Volcano', emoji: '🌋', hi: [9,10,11,12], lx:0.24, ly:0.72, light:'#ff7043', dark:'#6a1010' },
+  { id: 'desert',  label: 'Desert',  emoji: '🏜️', hi: [12,13,14,0], lx:0.22, ly:0.37, light:'#fdd835', dark:'#8a6008' },
 ];
 
 function MapView({ onSelect }) {
@@ -674,155 +678,166 @@ function MapView({ onSelect }) {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    // Draw smooth closed spline (Catmull-Rom → bezier)
-    function smoothPath(pts) {
-      const n = pts.length;
+    // Build polygon points for a region in canvas pixels
+    function regionPoly(reg, W, H) {
+      const pts = [[MAP_CTR[0]*W, MAP_CTR[1]*H]];
+      for (const i of reg.hi) pts.push([MAP_HULL[i][0]*W, MAP_HULL[i][1]*H]);
+      return pts;
+    }
+
+    function tracePoly(pts) {
       ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        const p0 = pts[(i - 1 + n) % n], p1 = pts[i];
-        const p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
-        const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
-        const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
-        const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
-        const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
-        i === 0 ? ctx.moveTo(p1[0], p1[1]) : ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
-      }
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
       ctx.closePath();
     }
 
-    // Precompute wave positions
-    let wSeed = 77;
-    const wr = () => { wSeed = (wSeed * 16807) % 2147483647; return (wSeed - 1) / 2147483646; };
-    const waves = Array.from({length: 22}, () => ({
-      wx: wr(), wy: wr(), rx: 60 + wr() * 140, phase: wr() * Math.PI * 2,
-    }));
+    // Precompute wave shimmer data
+    let ws = 77;
+    const wr = () => { ws = (ws * 16807) % 2147483647; return (ws-1)/2147483646; };
+    const waves = Array.from({length: 20}, () => ({wx:wr(),wy:wr(),rx:50+wr()*130,phase:wr()*Math.PI*2}));
 
     function drawMap(ts) {
       t.current = ts * 0.001;
       const W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Deep ocean background
-      const bg = ctx.createRadialGradient(W*0.5, H*0.4, 0, W*0.5, H*0.5, Math.max(W,H)*0.8);
-      bg.addColorStop(0, '#1a6a8a');
-      bg.addColorStop(0.5, '#0f4d6e');
-      bg.addColorStop(1, '#082840');
+      // Ocean background
+      const bg = ctx.createRadialGradient(W*.45, H*.38, 0, W*.5, H*.5, Math.max(W,H)*.85);
+      bg.addColorStop(0, '#1e7298');
+      bg.addColorStop(0.55, '#0e4d6a');
+      bg.addColorStop(1, '#082030');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Subtle animated water shimmer lines
+      // Ocean shimmer
       ctx.save();
       ctx.strokeStyle = '#4db8e8';
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 0.7;
       for (const w of waves) {
-        const alpha = 0.04 + 0.03 * Math.sin(t.current * 0.5 + w.phase);
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = 0.035 + 0.025 * Math.sin(t.current*.5 + w.phase);
         ctx.beginPath();
-        ctx.ellipse(w.wx * W, w.wy * H, w.rx, w.rx * 0.15, 0, 0, Math.PI * 2);
+        ctx.ellipse(w.wx*W, w.wy*H, w.rx, w.rx*.14, 0, 0, Math.PI*2);
         ctx.stroke();
       }
       ctx.restore();
 
       // Title
       ctx.save();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.shadowColor = 'rgba(0,0,0,0.7)';
-      ctx.shadowBlur = 10;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 10;
       ctx.fillStyle = '#c8e8f8';
-      ctx.font = `bold ${Math.round(H * 0.052)}px Georgia, serif`;
-      ctx.fillText('TERRARIUM', W / 2, 18);
-      ctx.fillStyle = '#7ecce8';
-      ctx.font = `italic ${Math.round(H * 0.023)}px Georgia, serif`;
-      ctx.shadowBlur = 4;
-      ctx.fillText('Choose your world', W / 2, 18 + Math.round(H * 0.06));
+      ctx.font = `bold ${Math.round(H*.052)}px Georgia, serif`;
+      ctx.fillText('TERRARIUM', W/2, 16);
+      ctx.fillStyle = '#7ecce8'; ctx.shadowBlur = 4;
+      ctx.font = `italic ${Math.round(H*.022)}px Georgia, serif`;
+      ctx.fillText('Choose your world', W/2, 16 + Math.round(H*.058));
       ctx.restore();
 
-      // Biome regions using smooth splines
-      const rad = Math.min(W, H) * 0.175;
+      // Landmass drop shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.55)';
+      ctx.shadowBlur = 28;
+      ctx.shadowOffsetY = 6;
+      ctx.beginPath();
+      ctx.moveTo(MAP_HULL[0][0]*W, MAP_HULL[0][1]*H);
+      for (let i = 1; i < MAP_HULL.length; i++) ctx.lineTo(MAP_HULL[i][0]*W, MAP_HULL[i][1]*H);
+      ctx.closePath();
+      ctx.fillStyle = '#000';
+      ctx.fill();
+      ctx.restore();
+
+      // Draw each biome region
       MAP_REGIONS.forEach((reg, i) => {
-        const cx = reg.x * W, cy = reg.y * H;
         const hovered = hover.current === i;
-        const scale = hovered ? 1 + Math.sin(t.current * 3.5) * 0.03 : 1;
-        const shape = REGION_SHAPES[i];
+        const pts = regionPoly(reg, W, H);
+        tracePoly(pts);
 
-        // Build world-space points from shape definition
-        const pts = shape.map(([af, rf]) => {
-          const angle = af * Math.PI * 2 - Math.PI / 2;
-          const r = rf * rad * scale;
-          return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r];
-        });
-
-        ctx.save();
-        if (hovered) {
-          ctx.shadowColor = reg.glow;
-          ctx.shadowBlur = 32;
-        } else {
-          ctx.shadowColor = 'rgba(0,0,0,0.4)';
-          ctx.shadowBlur = 12;
-        }
-        smoothPath(pts);
-
-        // Rich terrain gradient
-        const grad = ctx.createRadialGradient(cx - rad*0.2, cy - rad*0.3, 0, cx, cy, rad * 1.15);
-        grad.addColorStop(0, reg.glow);
-        grad.addColorStop(0.45, reg.color);
-        grad.addColorStop(1, reg.color + 'bb');
+        const cx = reg.lx * W, cy = reg.ly * H;
+        const grad = ctx.createRadialGradient(cx, cy - H*.04, 0, cx, cy + H*.08, Math.min(W,H)*.35);
+        grad.addColorStop(0, hovered ? reg.light : reg.light + 'cc');
+        grad.addColorStop(0.5, reg.dark + 'ee');
+        grad.addColorStop(1, reg.dark);
         ctx.fillStyle = grad;
         ctx.fill();
+      });
 
-        // Border
-        ctx.shadowBlur = 0;
-        smoothPath(pts);
-        ctx.strokeStyle = hovered ? reg.glow : 'rgba(255,255,255,0.25)';
-        ctx.lineWidth = hovered ? 3 : 1.5;
+      // Internal borders — lines from center to each divider hull point
+      const dividers = [0, 2, 4, 7, 9, 12];
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,0,0,.55)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([]);
+      for (const di of dividers) {
+        ctx.beginPath();
+        ctx.moveTo(MAP_CTR[0]*W, MAP_CTR[1]*H);
+        ctx.lineTo(MAP_HULL[di][0]*W, MAP_HULL[di][1]*H);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Outer landmass border
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(MAP_HULL[0][0]*W, MAP_HULL[0][1]*H);
+      for (let i = 1; i < MAP_HULL.length; i++) ctx.lineTo(MAP_HULL[i][0]*W, MAP_HULL[i][1]*H);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(0,0,0,.7)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+
+      // Hover glow overlay
+      if (hover.current >= 0) {
+        const reg = MAP_REGIONS[hover.current];
+        const pts = regionPoly(reg, W, H);
+        tracePoly(pts);
+        ctx.save();
+        ctx.strokeStyle = reg.light;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = reg.light;
+        ctx.shadowBlur = 20;
         ctx.stroke();
         ctx.restore();
+      }
 
-        // Emoji
-        const eSize = Math.round(Math.min(W,H) * (hovered ? 0.082 : 0.074));
+      // Emojis and labels
+      MAP_REGIONS.forEach((reg, i) => {
+        const hovered = hover.current === i;
+        const cx = reg.lx * W, cy = reg.ly * H;
+        const eSize = Math.round(Math.min(W,H) * (hovered ? .076 : .068));
         ctx.font = `${eSize}px serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(reg.emoji, cx, cy - eSize * 0.18);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(reg.emoji, cx, cy - eSize*.2);
 
-        // Label
         ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `${hovered ? 'bold ' : ''}${Math.round(Math.min(W,H) * 0.03)}px Georgia, serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = hovered ? 8 : 5;
-        ctx.fillText(reg.label, cx, cy + eSize * 0.58);
+        ctx.fillStyle = '#fff';
+        ctx.font = `${hovered ? 'bold ' : ''}${Math.round(Math.min(W,H)*.028)}px Georgia, serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = hovered ? 8 : 5;
+        ctx.fillText(reg.label, cx, cy + eSize*.52);
         ctx.restore();
       });
 
       // Compass rose
-      const crx = W - 52, cry = H - 52, crr = 24;
+      const crx = W-50, cry = H-50, crr = 22;
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 5;
+      ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5;
       ['N','E','S','W'].forEach((d, i) => {
-        const a = i * Math.PI / 2 - Math.PI / 2;
+        const a = i*Math.PI/2 - Math.PI/2;
         ctx.beginPath();
-        ctx.moveTo(crx + Math.cos(a) * crr, cry + Math.sin(a) * crr);
-        ctx.lineTo(crx + Math.cos(a + Math.PI/4) * crr * 0.35, cry + Math.sin(a + Math.PI/4) * crr * 0.35);
+        ctx.moveTo(crx+Math.cos(a)*crr, cry+Math.sin(a)*crr);
+        ctx.lineTo(crx+Math.cos(a+Math.PI/4)*crr*.35, cry+Math.sin(a+Math.PI/4)*crr*.35);
         ctx.lineTo(crx, cry);
         ctx.closePath();
-        ctx.fillStyle = i === 0 ? '#e84040' : '#c8dff0';
+        ctx.fillStyle = i===0 ? '#e84040' : '#c8dff0';
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
       });
-      ctx.font = `bold 9px Georgia, serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#e8f4ff';
+      ctx.font = 'bold 9px Georgia,serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#e8f4ff'; ctx.shadowBlur = 3;
       ['N','E','S','W'].forEach((d, i) => {
-        const a = i * Math.PI / 2 - Math.PI / 2;
-        ctx.fillText(d, crx + Math.cos(a) * (crr + 11), cry + Math.sin(a) * (crr + 11));
+        const a = i*Math.PI/2 - Math.PI/2;
+        ctx.fillText(d, crx+Math.cos(a)*(crr+11), cry+Math.sin(a)*(crr+11));
       });
       ctx.restore();
 
@@ -839,19 +854,23 @@ function MapView({ onSelect }) {
     const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const my = (e.clientY - rect.top) * (canvas.height / rect.height);
     const W = canvas.width, H = canvas.height;
-    let best = -1, bestD = Infinity;
-    MAP_REGIONS.forEach((reg, i) => {
-      const dx = mx - reg.x * W, dy = my - reg.y * H;
-      const d = Math.sqrt(dx*dx + dy*dy);
-      const rad = Math.min(W, H) * 0.11;
-      if (d < rad * 1.1 && d < bestD) { bestD = d; best = i; }
-    });
-    return best;
+    const ctx2 = canvas.getContext('2d');
+    for (let i = MAP_REGIONS.length - 1; i >= 0; i--) {
+      const reg = MAP_REGIONS[i];
+      ctx2.beginPath();
+      const c = [MAP_CTR[0]*W, MAP_CTR[1]*H];
+      ctx2.moveTo(c[0], c[1]);
+      for (const hi of reg.hi) ctx2.lineTo(MAP_HULL[hi][0]*W, MAP_HULL[hi][1]*H);
+      ctx2.closePath();
+      if (ctx2.isPointInPath(mx, my)) return i;
+    }
+    return -1;
   }
 
   function onMouseMove(e) {
-    hover.current = getRegionAt(e);
-    ref.current.style.cursor = hover.current >= 0 ? 'pointer' : 'default';
+    const i = getRegionAt(e);
+    hover.current = i;
+    ref.current.style.cursor = i >= 0 ? 'pointer' : 'default';
   }
   function onMouseLeave() { hover.current = -1; }
   function onClick(e) {
