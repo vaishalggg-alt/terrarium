@@ -709,10 +709,10 @@ export function createDesert(canvas) {
 
     const ap = approachT(time, 8000);
     const walking = walkFrac(time, 8000);
-    const drinkX = cx - r - 120;
-    const drinkY = groundY - 32;
+    const drinkX = cx - r - 90;
+    const drinkY = groundY - 18;
     const bx = lerp(W + 60, drinkX, ap);
-    const by = lerp(groundY - 32, drinkY, ap);
+    const by = lerp(groundY - 18, drinkY, ap);
 
     const drinkT = ap === 1 ? 1 : 0;
     const [fr, fl, br, bl] = legSwing(time, walking);
