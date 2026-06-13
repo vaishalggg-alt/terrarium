@@ -711,145 +711,118 @@ export function createDesert(canvas) {
 
     ctx.save();
     ctx.translate(bx, by);
-    ctx.scale(1.5 * sc, 1.5 * sc);
+    ctx.scale(1.4 * sc, 1.4 * sc);
 
-    const fur     = rgb([168, 148, 105].map(c => c * d));
-    const darkFur = rgb([105,  82,  45].map(c => c * d));
-    const belly   = rgb([218, 205, 172].map(c => c * d));
-    const muzzleC = rgb([200, 182, 140].map(c => c * d));
-    const tipCol  = rgb([ 60,  38,  15].map(c => c * d));
+    // Sandy-gray coyote palette
+    const fur     = rgb([175, 158, 118].map(c => c * d));
+    const gray    = rgb([145, 132, 112].map(c => c * d));
+    const darkFur = rgb([ 98,  78,  42].map(c => c * d));
+    const cream   = rgb([230, 218, 188].map(c => c * d));
+    const dark    = rgb([ 35,  22,   8].map(c => c * d));
 
-    // Ground reference: y=0 is feet level; body floats upward.
-    // Coyote faces LEFT (toward pool). Rump is at right (+x), head at left (−x).
+    // Coyote faces LEFT. Origin (0,0) = ground at hind feet.
+    // Legs are long — body rides higher off ground than the fox.
 
-    // ── TAIL: drooping from rump, dark tip ──────────────────────────────────
-    ctx.strokeStyle = fur; ctx.lineWidth = 6.5; ctx.lineCap = 'round';
+    const headDip = drinkT * 14;
+    const headFwd = drinkT * 6;
+    const hx = -23 - headFwd, hy = -30 + headDip;
+
+    // ── TAIL: drooping low, dark tip ─────────────────────────────────────────
+    ctx.strokeStyle = fur; ctx.lineWidth = 5.5; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(14, -11);
-    ctx.bezierCurveTo(20, -6, 26, 2, 24, 10);
+    ctx.moveTo(14, -13);
+    ctx.bezierCurveTo(22, -8, 28, 0, 26, 10);
     ctx.stroke();
-    ctx.strokeStyle = darkFur; ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(23, 5);
-    ctx.bezierCurveTo(25, 8, 25, 11, 24, 13);
-    ctx.stroke();
-    ctx.fillStyle = tipCol;
-    ctx.beginPath(); ctx.ellipse(24, 14, 3.5, 2.5, 0.3, 0, TAU); ctx.fill();
+    ctx.strokeStyle = darkFur; ctx.lineWidth = 4.5;
+    ctx.beginPath(); ctx.moveTo(24, 6); ctx.bezierCurveTo(26, 9, 27, 12, 26, 14); ctx.stroke();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(26, 15, 3, 2, 0.3, 0, TAU); ctx.fill();
 
-    // ── REAR LEGS (drawn first so body covers the hip join) ─────────────────
-    ctx.lineCap = 'round';
-    // back pair (slightly right, darker)
-    ctx.strokeStyle = darkFur; ctx.lineWidth = 4.2;
-    ctx.beginPath();
-    ctx.moveTo(9, -8);                              // hip
-    ctx.quadraticCurveTo(13 + br * 0.4, -2, 10 + br, 0); // thigh → hock → foot
-    ctx.stroke();
-    // front of rear pair (lighter)
-    ctx.strokeStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(7, -8);
-    ctx.quadraticCurveTo(10 + bl * 0.4, -2, 7 + bl, 0);
-    ctx.stroke();
+    // ── REAR LEGS: two-segment (thigh + shin) ───────────────────────────────
+    const drawLeg = (hpx, hpy, sw, col, w) => {
+      const kx = hpx + sw * 0.35 + 2, ky = hpy + 5; // knee/hock
+      const fx = hpx + sw, fy = 0;                    // foot
+      ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(hpx, hpy); ctx.lineTo(kx, ky); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+    };
+    drawLeg(10,  -10, br, darkFur, 3.8);   // rear-back
+    drawLeg( 7,  -10, bl, fur,     3.8);   // rear-front
 
-    // ── BODY: single connected bezier silhouette ─────────────────────────────
+    // ── BODY: lean elongated ellipse ─────────────────────────────────────────
     ctx.fillStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(13, -10);                                    // rump top-right
-    ctx.bezierCurveTo(17, -13, 18, -9, 16, -5);            // rump curve
-    ctx.bezierCurveTo(14,  -1,  4,  0, -8, -2);            // belly
-    ctx.bezierCurveTo(-13, -3, -15, -8, -13, -13);         // chest
-    ctx.bezierCurveTo(-11, -18, -4, -21,  4, -22);         // withers
-    ctx.bezierCurveTo( 9,  -23, 13, -18, 13, -10);         // back
-    ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -16, 15, 7, -0.08, 0, TAU); ctx.fill();
+    // gray overlay on back
+    ctx.fillStyle = gray;
+    ctx.beginPath(); ctx.ellipse(2, -21, 11, 3, -0.08, 0, TAU); ctx.fill();
+    // cream belly strip
+    ctx.fillStyle = cream;
+    ctx.beginPath(); ctx.ellipse(-1, -11, 9, 3.5, -0.05, 0, TAU); ctx.fill();
 
-    // belly lighter patch
-    ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(1, -5, 8, 3, 0, 0, TAU); ctx.fill();
-
-    // dorsal darker stripe
-    ctx.fillStyle = darkFur;
-    ctx.beginPath(); ctx.ellipse(3, -21, 8, 2, -0.1, 0, TAU); ctx.fill();
-
-    // ── FRONT LEGS ───────────────────────────────────────────────────────────
+    // ── FRONT LEGS ──────────────────────────────────────────────────────────
     const lean = drinkT * 5;
-    ctx.strokeStyle = darkFur; ctx.lineWidth = 4.2;
-    ctx.beginPath();
-    ctx.moveTo(-8, -8);
-    ctx.quadraticCurveTo(-6 + fr * 0.4 - lean, -2, -8 + fr - lean, 0);
-    ctx.stroke();
-    ctx.strokeStyle = fur;
-    ctx.beginPath();
-    ctx.moveTo(-10, -8);
-    ctx.quadraticCurveTo(-9 + fl * 0.4 - lean, -2, -11 + fl - lean, 0);
-    ctx.stroke();
+    drawLeg(-9,  -11, fr - lean, darkFur, 3.8);
+    drawLeg(-12, -11, fl - lean, fur,     3.8);
 
-    // small paws
-    ctx.fillStyle = muzzleC;
-    [[10 + br, 0],[7 + bl, 0],[-8 + fr - lean, 0],[-11 + fl - lean, 0]].forEach(([px, py]) => {
-      ctx.beginPath(); ctx.ellipse(px, py, 3, 1.6, 0, 0, TAU); ctx.fill();
+    // paws
+    ctx.fillStyle = cream;
+    [[10+br,0],[7+bl,0],[-9+fr-lean,0],[-12+fl-lean,0]].forEach(([px,py]) => {
+      ctx.beginPath(); ctx.ellipse(px, py, 3, 1.5, 0, 0, TAU); ctx.fill();
     });
 
-    // ── NECK: bezier strip connecting body chest to head ─────────────────────
-    const headDip = drinkT * 16;
-    const headFwd = drinkT * 6;
-    const hx = -22 - headFwd, hy = -31 + headDip;
-
+    // ── NECK: slim tapered strip ─────────────────────────────────────────────
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(-8, -12);                                    // neck base, back side
-    ctx.bezierCurveTo(-12, -18, hx + 10, hy + 14, hx + 7, hy + 5); // back of neck
-    ctx.bezierCurveTo(hx + 11, hy + 7, -4, -14, -5, -11);  // front of neck back to body
+    ctx.moveTo(-10, -21);                              // neck top-back at body
+    ctx.bezierCurveTo(-13, -25, hx + 9, hy + 10, hx + 6, hy + 3); // back of neck
+    ctx.lineTo(hx + 3, hy + 1);
+    ctx.bezierCurveTo(hx + 8, hy + 6, -7, -20, -7, -18);  // front of neck
     ctx.closePath(); ctx.fill();
 
-    // ── HEAD ─────────────────────────────────────────────────────────────────
+    // ── HEAD: slightly angular, not round ───────────────────────────────────
     ctx.fillStyle = fur;
-    ctx.beginPath(); ctx.ellipse(hx, hy, 9, 7.5, -0.15, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx, hy, 8, 6.5, -0.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = gray;
+    ctx.beginPath(); ctx.ellipse(hx + 1, hy - 2.5, 5, 2.8, -0.18, 0, TAU); ctx.fill();
 
-    // forehead stripe
-    ctx.fillStyle = darkFur;
-    ctx.beginPath(); ctx.ellipse(hx + 1, hy - 3, 5.5, 3, -0.12, 0, TAU); ctx.fill();
-
-    // ── EARS: tall pointed triangles ──────────────────────────────────────────
+    // ── EARS: tall narrow pointed ────────────────────────────────────────────
+    const ear = (ax, ay, tipX, tipY, bx2, by2, inax, inay, intipX, intipY, inbx, inby) => {
+      ctx.fillStyle = fur;
+      ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(tipX,tipY); ctx.lineTo(bx2,by2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = `rgba(185,120,110,${0.65*d})`;
+      ctx.beginPath(); ctx.moveTo(inax,inay); ctx.lineTo(intipX,intipY); ctx.lineTo(inbx,inby); ctx.closePath(); ctx.fill();
+    };
     // back ear
+    ear(hx+3, hy-4, hx+6, hy-22, hx+11, hy-5,   hx+4, hy-6, hx+6, hy-19, hx+10, hy-6);
+    // front ear (taller, slightly forward)
+    ear(hx-2, hy-4, hx-4, hy-23, hx+4,  hy-5,   hx-1, hy-6, hx-2, hy-20, hx+3,  hy-6);
+
+    // ── MUZZLE: long narrow wedge ────────────────────────────────────────────
     ctx.fillStyle = fur;
     ctx.beginPath();
-    ctx.moveTo(hx + 4, hy - 5); ctx.lineTo(hx + 8, hy - 24); ctx.lineTo(hx + 12, hy - 6);
+    ctx.moveTo(hx - 2, hy - 1);    // top-base at head
+    ctx.lineTo(hx - 21, hy + 2);   // tip of nose
+    ctx.lineTo(hx - 2, hy + 5);    // bottom-base at head
     ctx.closePath(); ctx.fill();
-    // front ear
+    // lighter lower jaw / chin
+    ctx.fillStyle = cream;
     ctx.beginPath();
-    ctx.moveTo(hx - 2, hy - 5); ctx.lineTo(hx - 5, hy - 25); ctx.lineTo(hx + 5, hy - 6);
-    ctx.closePath(); ctx.fill();
-    // inner pink
-    ctx.fillStyle = `rgba(200,138,128,${0.72 * d})`;
-    ctx.beginPath();
-    ctx.moveTo(hx + 5, hy - 7); ctx.lineTo(hx + 8, hy - 20); ctx.lineTo(hx + 11, hy - 7);
-    ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(hx - 1, hy - 7); ctx.lineTo(hx - 3, hy - 21); ctx.lineTo(hx + 4, hy - 7);
+    ctx.moveTo(hx - 3, hy + 2);
+    ctx.lineTo(hx - 17, hy + 2.5);
+    ctx.lineTo(hx - 3, hy + 5);
     ctx.closePath(); ctx.fill();
 
-    // ── MUZZLE: long pointed snout ────────────────────────────────────────────
-    ctx.fillStyle = muzzleC;
-    ctx.beginPath();
-    ctx.moveTo(hx - 3, hy - 1);
-    ctx.bezierCurveTo(hx - 8, hy - 2, hx - 20, hy, hx - 22, hy + 3);
-    ctx.bezierCurveTo(hx - 21, hy + 6, hx - 14, hy + 6, hx - 5, hy + 4);
-    ctx.bezierCurveTo(hx - 1, hy + 3, hx, hy + 1, hx - 1, hy - 1);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = belly;
-    ctx.beginPath(); ctx.ellipse(hx - 14, hy + 4.5, 6, 2.2, 0, 0, TAU); ctx.fill();
+    // ── NOSE ─────────────────────────────────────────────────────────────────
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(hx - 20, hy + 2, 2, 1.5, 0.1, 0, TAU); ctx.fill();
 
-    // ── NOSE ──────────────────────────────────────────────────────────────────
-    ctx.fillStyle = tipCol;
-    ctx.beginPath(); ctx.ellipse(hx - 20, hy + 2.5, 2.2, 1.6, 0.1, 0, TAU); ctx.fill();
-
-    // ── EYE ───────────────────────────────────────────────────────────────────
-    ctx.fillStyle = rgb([160, 120, 40].map(c => c * d));
-    ctx.beginPath(); ctx.ellipse(hx - 1, hy - 2, 2.5, 2.2, 0.1, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.92)';
-    ctx.beginPath(); ctx.arc(hx - 1, hy - 2, 1.6, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.beginPath(); ctx.arc(hx + 0.2, hy - 3.2, 0.7, 0, TAU); ctx.fill();
+    // ── EYE ──────────────────────────────────────────────────────────────────
+    ctx.fillStyle = rgb([145, 108, 35].map(c => c * d));
+    ctx.beginPath(); ctx.ellipse(hx - 2, hy - 2, 2.3, 2, 0.1, 0, TAU); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.arc(hx - 2, hy - 2, 1.4, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${0.6 * d})`;
+    ctx.beginPath(); ctx.arc(hx - 0.8, hy - 3, 0.65, 0, TAU); ctx.fill();
 
     ctx.restore();
   }
