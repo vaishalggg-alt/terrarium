@@ -916,18 +916,20 @@ export function createJungle(canvas) {
   // Drawn as a proper deer in side-profile: long legs, barrel body,
   // long neck, elongated snout, large ears, branching antlers.
 
-  // Chital (spotted deer) — side profile, glowing blue tones
+  // Spirit owl — perched on a trunk, facing forward, glowing eyes
   function drawSpiritDeer(groundY, time) {
     const t = bio >= 0.86 ? 1 : 0;
     if (t <= 0) return;
 
-    const bx = W * 0.50, by = groundY;
-    const sc = Math.min(1, W / 420) * 1.7;
+    // Perch on the right-side foreground trunk
+    const bx = W * 0.87, by = groundY - H * 0.22;
+    const sc = Math.min(1, W / 420) * 1.4;
     const pulse = 0.65 + Math.sin(time * 0.0011) * 0.35;
 
+    // Ambient glow around perch point
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(bx, by - sc * 65, 80, 120, 200, 255, t * pulse * 0.40);
+    drawGlow(bx, by, 55, 120, 200, 255, t * pulse * 0.35);
     ctx.restore();
 
     ctx.save();
@@ -935,192 +937,88 @@ export function createJungle(canvas) {
     ctx.scale(sc, sc);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-    const body   = `rgba(90,160,235,${t * 0.82})`;
-    const dim    = `rgba(50,95,175,${t * 0.72})`;
-    const bright = `rgba(165,230,255,${t * pulse})`;
-    const antler = `rgba(185,245,255,${t * (0.65 + pulse * 0.35)})`;
-    const spot   = `rgba(195,238,255,${t * 0.88})`;
+    const body  = `rgba(80,145,225,${t * 0.88})`;
+    const dim   = `rgba(45,85,170,${t * 0.75})`;
+    const mark  = `rgba(130,200,255,${t * 0.70})`;
+    const eye   = `rgba(180,240,255,${t * pulse})`;
 
-    // ── far hind leg (behind body) ──
-    ctx.strokeStyle = dim; ctx.lineWidth = 3.8;
-    ctx.beginPath();
-    ctx.moveTo(22, 0);      // hoof
-    ctx.lineTo(24, -18);    // cannon
-    ctx.lineTo(26, -36);    // stifle (knee)
-    ctx.lineTo(20, -54);    // hip
-    ctx.stroke();
-
-    // ── near hind leg ──
-    ctx.strokeStyle = body; ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(16, 0);
-    ctx.lineTo(18, -18);
-    ctx.lineTo(20, -36);
-    ctx.lineTo(15, -54);
-    ctx.stroke();
-
-    // ── far front leg ──
-    ctx.strokeStyle = dim; ctx.lineWidth = 3.8;
-    ctx.beginPath();
-    ctx.moveTo(-12, 0);
-    ctx.lineTo(-13, -18);   // fetlock
-    ctx.lineTo(-14, -40);   // knee
-    ctx.stroke();
-
-    // ── near front leg ──
-    ctx.strokeStyle = body; ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(-8, 0);
-    ctx.lineTo(-9, -18);
-    ctx.lineTo(-10, -40);
-    ctx.stroke();
-
-    // Hooves
+    // ── wings folded at sides — two rounded lobes ──
     ctx.fillStyle = dim;
-    [[-12,1],[-8,1],[16,1],[22,1]].forEach(([hx2,hy2]) => {
-      ctx.beginPath(); ctx.ellipse(hx2, hy2, 3.2, 1.6, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-14, 4, 10, 18, -0.15, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse( 14, 4, 10, 18,  0.15, 0, TAU); ctx.fill();
+
+    // Wing feather lines
+    ctx.strokeStyle = `rgba(40,75,160,${t * 0.6})`; ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      const wy = -8 + i * 6;
+      ctx.beginPath(); ctx.moveTo(-20, wy); ctx.lineTo(-6, wy + 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo( 20, wy); ctx.lineTo(  6, wy + 1); ctx.stroke();
+    }
+
+    // ── body — plump rounded torso ──
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.ellipse(0, 4, 12, 18, 0, 0, TAU); ctx.fill();
+
+    // Breast barring (horizontal marks)
+    ctx.fillStyle = mark;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath(); ctx.ellipse(0, -2 + i * 7, 7, 1.8, 0, 0, TAU); ctx.fill();
+    }
+
+    // ── talons gripping branch ──
+    ctx.strokeStyle = dim; ctx.lineWidth = 2.2;
+    [[-6, 20], [0, 21], [6, 20]].forEach(([tx2, ty2]) => {
+      ctx.beginPath(); ctx.moveTo(tx2, 18);
+      ctx.bezierCurveTo(tx2 - 3, ty2 + 2, tx2 - 6, ty2 + 5, tx2 - 8, ty2 + 4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx2, 18);
+      ctx.bezierCurveTo(tx2 + 3, ty2 + 2, tx2 + 5, ty2 + 5, tx2 + 7, ty2 + 4); ctx.stroke();
     });
 
-    // ── body — deep barrel, haunches slightly raised ──
+    // ── head — large round circle ──
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(5, -57, 28, 17, 0.06, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -20, 16, 0, TAU); ctx.fill();
 
-    // Belly underside (lighter)
-    ctx.fillStyle = `rgba(70,125,210,${t * 0.38})`;
-    ctx.beginPath(); ctx.ellipse(5, -47, 22, 7, 0.06, 0, TAU); ctx.fill();
-
-    // Haunches bump
+    // Facial disc — flat pale oval around face
+    ctx.fillStyle = mark;
+    ctx.beginPath(); ctx.ellipse(0, -20, 13, 12, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = body;
-    ctx.beginPath(); ctx.ellipse(26, -62, 11, 14, 0.18, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -20, 10, 9, 0, 0, TAU); ctx.fill();
 
-    // Short tail — white tuft
-    ctx.fillStyle = spot;
-    ctx.beginPath(); ctx.ellipse(33, -63, 5, 7, 0.35, 0, TAU); ctx.fill();
-
-    // ── glowing spots (chital's signature markings) ──
-    ctx.fillStyle = spot;
-    const spots = [
-      [-2,-58],[5,-52],[12,-52],[18,-57],[24,-60],
-      [0,-65],[8,-66],[16,-65],[22,-68],
-      [-6,-52],[3,-45],[10,-45],[18,-49],
-      [-4,-70],[4,-73],[12,-70],
-    ];
-    spots.forEach(([sx, sy]) => {
-      const sr = 1.3 + (Math.abs(sx * 2 + sy) % 18) / 9;
-      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, TAU); ctx.fill();
-    });
-
-    // ── neck — long, upright, angled forward ──
-    ctx.fillStyle = body;
-    ctx.beginPath();
-    ctx.moveTo(-4, -68);
-    ctx.bezierCurveTo(-8, -78, -12, -87, -11, -94);
-    ctx.lineTo(-5, -93);
-    ctx.bezierCurveTo(-6, -86, -2, -77, 2, -67);
-    ctx.closePath(); ctx.fill();
-
-    // Throat pale patch
-    ctx.fillStyle = `rgba(145,210,255,${t * 0.50})`;
-    ctx.beginPath();
-    ctx.moveTo(-8, -72);
-    ctx.bezierCurveTo(-10, -80, -10, -88, -9, -93);
-    ctx.lineTo(-6, -93);
-    ctx.bezierCurveTo(-7, -88, -7, -80, -5, -72);
-    ctx.closePath(); ctx.fill();
-
-    // ── head — chital has a refined face, medium-length snout ──
-    ctx.fillStyle = body;
-    ctx.beginPath();
-    ctx.moveTo(-5, -93);       // skull-neck join
-    ctx.bezierCurveTo(-10, -97, -15, -102, -18, -104);  // forehead
-    ctx.bezierCurveTo(-22, -106, -28, -106, -33, -103); // snout top
-    ctx.bezierCurveTo(-37, -100, -36, -95, -34, -93);   // nose tip
-    ctx.bezierCurveTo(-30, -90, -20, -89, -12, -90);    // lower jaw
-    ctx.bezierCurveTo(-8, -91, -4, -92, -5, -93);
-    ctx.closePath(); ctx.fill();
-
-    // Dark nose
-    ctx.fillStyle = `rgba(10,14,40,${t})`;
-    ctx.beginPath(); ctx.ellipse(-35, -97, 3, 2.5, -0.2, 0, TAU); ctx.fill();
-    // Nose highlight
-    ctx.fillStyle = spot;
-    ctx.beginPath(); ctx.arc(-34, -98.5, 1, 0, TAU); ctx.fill();
-
-    // Lower chin pale
-    ctx.fillStyle = `rgba(145,210,255,${t * 0.42})`;
-    ctx.beginPath(); ctx.ellipse(-23, -90, 9, 2.2, 0.1, 0, TAU); ctx.fill();
-
-    // ── ears — large, oval, angled outward from skull top ──
-    ctx.fillStyle = body;
-    // Near ear
-    ctx.beginPath();
-    ctx.moveTo(-9, -103);
-    ctx.bezierCurveTo(-7, -112, -3, -119, -5, -117);
-    ctx.bezierCurveTo(-7, -115, -8, -110, -10, -106);
-    ctx.closePath(); ctx.fill();
-    // Far ear (behind head)
+    // Ear tufts
     ctx.fillStyle = dim;
-    ctx.beginPath();
-    ctx.moveTo(-15, -103);
-    ctx.bezierCurveTo(-18, -112, -17, -119, -15, -117);
-    ctx.bezierCurveTo(-14, -115, -14, -110, -14, -106);
-    ctx.closePath(); ctx.fill();
-    // Inner ear
-    ctx.fillStyle = `rgba(115,185,255,${t * 0.48})`;
-    ctx.beginPath();
-    ctx.moveTo(-9, -104);
-    ctx.bezierCurveTo(-7, -111, -4, -116, -6, -114);
-    ctx.bezierCurveTo(-7, -112, -8, -108, -10, -106);
-    ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-8, -34); ctx.lineTo(-11, -42); ctx.lineTo(-5, -38); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo( 8, -34); ctx.lineTo( 11, -42); ctx.lineTo(  5, -38); ctx.closePath(); ctx.fill();
 
-    // ── eye — large, dark, with shine ──
-    ctx.fillStyle = bright;
-    ctx.beginPath(); ctx.arc(-20, -100, 3.2, 0, TAU); ctx.fill();
-    ctx.fillStyle = `rgba(5,8,22,${t})`;
-    ctx.beginPath(); ctx.arc(-20, -100, 2, 0, TAU); ctx.fill();
-    ctx.fillStyle = `rgba(255,255,255,0.75)`;
-    ctx.beginPath(); ctx.arc(-19, -101.2, 0.8, 0, TAU); ctx.fill();
+    // ── eyes — large forward-facing owl eyes ──
+    // Left eye
+    ctx.fillStyle = `rgba(8,6,24,${t})`;
+    ctx.beginPath(); ctx.arc(-5, -21, 5.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = eye;
+    ctx.beginPath(); ctx.arc(-5, -21, 4, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(8,6,24,${t})`;
+    ctx.beginPath(); ctx.arc(-5, -21, 2.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.arc(-3.8, -22.2, 1, 0, TAU); ctx.fill();
+    // Right eye
+    ctx.fillStyle = `rgba(8,6,24,${t})`;
+    ctx.beginPath(); ctx.arc( 5, -21, 5.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = eye;
+    ctx.beginPath(); ctx.arc( 5, -21, 4, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(8,6,24,${t})`;
+    ctx.beginPath(); ctx.arc( 5, -21, 2.2, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.arc( 6.2, -22.2, 1, 0, TAU); ctx.fill();
+
+    // Eye glow
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    drawGlow(-20, -100, 11, 130, 210, 255, t * 0.88);
+    drawGlow(-5, -21, 14, 120, 210, 255, t * pulse * 0.9);
+    drawGlow( 5, -21, 14, 120, 210, 255, t * pulse * 0.9);
     ctx.restore();
 
-    // ── antlers — chital style: main beam curves back & up, brow tine ──
-    // forward, top splits into two or three tines
-    ctx.strokeStyle = antler; ctx.lineCap = 'round';
-
-    // Near antler (fully visible)
-    ctx.lineWidth = 3.2;
-    ctx.beginPath(); // main beam: rises from pedicel, sweeps back then up
-    ctx.moveTo(-10, -106);
-    ctx.bezierCurveTo(-8, -116, -2, -124, 2, -132);
-    ctx.stroke();
-    ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.moveTo(-8, -111); ctx.bezierCurveTo(-3, -114, 0, -116, 2, -115); ctx.stroke(); // brow tine
-    ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.moveTo(2, -132); ctx.lineTo(8, -138); ctx.stroke();  // top fork A
-    ctx.beginPath(); ctx.moveTo(2, -132); ctx.lineTo(-2, -139); ctx.stroke(); // top fork B
-    ctx.beginPath(); ctx.moveTo(2, -132); ctx.lineTo(5, -140); ctx.stroke();  // top fork C
-
-    // Far antler (partially behind, slightly dimmer)
-    ctx.strokeStyle = `rgba(155,225,255,${t * (0.55 + pulse * 0.25)})`;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(-14, -106);
-    ctx.bezierCurveTo(-16, -116, -14, -125, -10, -132);
-    ctx.stroke();
-    ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(-15, -111); ctx.bezierCurveTo(-20, -114, -22, -116, -22, -115); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-10, -132); ctx.lineTo(-5, -138); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-10, -132); ctx.lineTo(-13, -139); ctx.stroke();
-
-    // Glow at antler tips
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
-    [[2,-132],[8,-138],[-2,-139],[5,-140],[-10,-132],[-5,-138],[-13,-139]].forEach(([ax,ay]) => {
-      drawGlow(ax, ay, 7, 160, 235, 255, t * pulse * 0.55);
-    });
-    ctx.restore();
+    // Beak — small downward triangle
+    ctx.fillStyle = `rgba(130,190,255,${t * 0.85})`;
+    ctx.beginPath(); ctx.moveTo(-2.5, -16); ctx.lineTo(2.5, -16); ctx.lineTo(0, -12); ctx.closePath(); ctx.fill();
 
     ctx.restore();
   }
