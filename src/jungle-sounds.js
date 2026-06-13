@@ -1,5 +1,4 @@
 // Procedural ambient soundscapes for the Jungle biome.
-// All audio is synthesised via Web Audio API — no external files needed.
 
 export const SOUND_OPTIONS = [
   { id: 'rain',    label: '🌧️ Rain' },
@@ -8,10 +7,13 @@ export const SOUND_OPTIONS = [
   { id: 'off',     label: '🔇 Off' },
 ];
 
+const CRICKETS_URL = new URL('./assets/crickets.mp3', import.meta.url).href;
+
 export function createSoundEngine() {
   let actx = null;
   let active = [];
   let current = 'off';
+  let cricketsBuffer = null; // cached decoded audio buffer
 
   function ctx() {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -43,24 +45,26 @@ export function createSoundEngine() {
     active.push(src, bp, lp, gain);
   }
 
-  function insects() {
+  async function insects() {
     const c = ctx();
-    // Cricket chorus — layered sine oscillators with amplitude modulation
-    [[3800, 7.1], [4250, 6.4], [5100, 8.2], [3500, 5.8], [4600, 7.7]].forEach(([freq, lfoHz], i) => {
-      const osc = c.createOscillator(); osc.type = 'sine'; osc.frequency.value = freq;
-      const lfo = c.createOscillator(); lfo.frequency.value = lfoHz; lfo.type = 'sine';
-      const lfoG = c.createGain(); lfoG.gain.value = 0.5;
-      const ampG = c.createGain(); ampG.gain.value = 0.025 + i * 0.003;
-      lfo.connect(lfoG); lfoG.connect(osc.frequency);
-      osc.connect(ampG); ampG.connect(c.destination);
-      osc.start(); lfo.start();
-      active.push(osc, lfo, lfoG, ampG);
-    });
-    // Low jungle-floor hum
-    const hum = c.createOscillator(); hum.type = 'sine'; hum.frequency.value = 185;
-    const humG = c.createGain(); humG.gain.value = 0.032;
-    hum.connect(humG); humG.connect(c.destination); hum.start();
-    active.push(hum, humG);
+    if (!cricketsBuffer) {
+      try {
+        const res = await fetch(CRICKETS_URL);
+        const ab = await res.arrayBuffer();
+        cricketsBuffer = await c.decodeAudioData(ab);
+      } catch {
+        return; // file unavailable, stay silent
+      }
+    }
+    // Guard: user may have switched away while we were fetching
+    if (current !== 'insects') return;
+    const src = c.createBufferSource();
+    src.buffer = cricketsBuffer;
+    src.loop = true;
+    const gain = c.createGain(); gain.gain.value = 0.55;
+    src.connect(gain); gain.connect(c.destination);
+    src.start();
+    active.push(src, gain);
   }
 
   function stream() {
@@ -82,8 +86,8 @@ export function createSoundEngine() {
     get current() { return current; },
     play(id) {
       stopAll(); current = id;
-      if (id === 'rain')    rain();
-      else if (id === 'insects') insects();
+      if (id === 'rain')         rain();
+      else if (id === 'insects') insects(); // async, self-guards on current
       else if (id === 'stream')  stream();
     },
     stop() { stopAll(); current = 'off'; },
