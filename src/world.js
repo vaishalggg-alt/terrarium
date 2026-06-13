@@ -418,7 +418,7 @@ export function createWorld(canvas) {
     }
   }
 
-  function drawBgTree(x, groundY, height, trunkW, canopyR, alpha, d, sway) {
+  function drawBgTree(x, groundY, height, trunkW, canopyR, alpha, d, sway, arch = false) {
     const tx = x + sway * 1.3;
     const ty = groundY - height;
 
@@ -431,19 +431,58 @@ export function createWorld(canvas) {
     ctx.quadraticCurveTo(x + sway * 0.5, groundY - height * 0.55, tx, ty);
     ctx.stroke();
 
-    // layered canopy — 3 overlapping filled blobs at slightly different positions
-    // gives a natural leafy silhouette instead of a single gradient circle
-    const blobs = [
-      { ox: 0,              oy: 0,              r: canopyR,        a: alpha + 0.15 },
-      { ox: -canopyR * 0.4, oy: -canopyR * 0.3, r: canopyR * 0.78, a: alpha + 0.12 },
-      { ox:  canopyR * 0.38,oy: -canopyR * 0.2, r: canopyR * 0.72, a: alpha + 0.10 },
-      { ox:  canopyR * 0.1, oy: -canopyR * 0.55,r: canopyR * 0.62, a: alpha + 0.08 },
-    ];
-    for (const b of blobs) {
-      ctx.fillStyle = `rgba(${(38 * d) | 0},${(88 * d) | 0},${(44 * d) | 0},${b.a})`;
+    if (arch) {
+      // Arched canopy — broad dome that sweeps down at the sides like a cathedral
+      const aw = canopyR * 2.2;   // total arch width
+      const ah = canopyR * 1.6;   // arch height
+      const col = `rgba(${(35*d)|0},${(82*d)|0},${(38*d)|0},${alpha + 0.10})`;
+      const col2 = `rgba(${(28*d)|0},${(66*d)|0},${(30*d)|0},${alpha + 0.08})`;
+
+      // Main arch silhouette
+      ctx.fillStyle = col;
       ctx.beginPath();
-      ctx.arc(tx + b.ox, ty + b.oy, b.r, 0, TAU);
+      ctx.moveTo(tx - aw, ty + ah * 0.35);                                  // bottom-left
+      ctx.bezierCurveTo(tx - aw * 0.9, ty - ah * 0.1, tx - aw * 0.5, ty - ah, tx, ty - ah); // left sweep up
+      ctx.bezierCurveTo(tx + aw * 0.5, ty - ah, tx + aw * 0.9, ty - ah * 0.1, tx + aw, ty + ah * 0.35); // right sweep down
+      ctx.bezierCurveTo(tx + aw * 0.6, ty + ah * 0.55, tx - aw * 0.6, ty + ah * 0.55, tx - aw, ty + ah * 0.35);
+      ctx.closePath();
       ctx.fill();
+
+      // Inner darker layer for depth
+      ctx.fillStyle = col2;
+      ctx.beginPath();
+      ctx.moveTo(tx - aw * 0.6, ty + ah * 0.20);
+      ctx.bezierCurveTo(tx - aw * 0.55, ty - ah * 0.35, tx - aw * 0.28, ty - ah * 0.82, tx, ty - ah * 0.78);
+      ctx.bezierCurveTo(tx + aw * 0.28, ty - ah * 0.82, tx + aw * 0.55, ty - ah * 0.35, tx + aw * 0.6, ty + ah * 0.20);
+      ctx.bezierCurveTo(tx + aw * 0.35, ty + ah * 0.42, tx - aw * 0.35, ty + ah * 0.42, tx - aw * 0.6, ty + ah * 0.20);
+      ctx.closePath();
+      ctx.fill();
+
+      // Irregular edge bumps — makes it look leafy, not geometric
+      ctx.fillStyle = col;
+      const bumpCount = 7;
+      for (let b = 0; b < bumpCount; b++) {
+        const bt = b / (bumpCount - 1);
+        const bx2 = tx - aw + bt * aw * 2;
+        const by2 = ty - ah * (0.25 + Math.sin(bt * Math.PI) * 0.75) + Math.sin(b * 2.3) * canopyR * 0.18;
+        ctx.beginPath();
+        ctx.arc(bx2, by2, canopyR * (0.22 + Math.abs(Math.sin(b * 1.7)) * 0.18), 0, TAU);
+        ctx.fill();
+      }
+    } else {
+      // Original rounded blob canopy
+      const blobs = [
+        { ox: 0,              oy: 0,              r: canopyR,        a: alpha + 0.15 },
+        { ox: -canopyR * 0.4, oy: -canopyR * 0.3, r: canopyR * 0.78, a: alpha + 0.12 },
+        { ox:  canopyR * 0.38,oy: -canopyR * 0.2, r: canopyR * 0.72, a: alpha + 0.10 },
+        { ox:  canopyR * 0.1, oy: -canopyR * 0.55,r: canopyR * 0.62, a: alpha + 0.08 },
+      ];
+      for (const b of blobs) {
+        ctx.fillStyle = `rgba(${(38 * d) | 0},${(88 * d) | 0},${(44 * d) | 0},${b.a})`;
+        ctx.beginPath();
+        ctx.arc(tx + b.ox, ty + b.oy, b.r, 0, TAU);
+        ctx.fill();
+      }
     }
   }
 
@@ -472,7 +511,7 @@ export function createWorld(canvas) {
       const t = farTrees[i];
       const alpha = (0.22 + t.layer * 0.18) * density;
       const sway = Math.sin(time * 0.00035 + i * 1.3) * 5;
-      drawBgTree(t.x, groundY, t.height, t.trunkW, t.canopyR, alpha, d, sway);
+      drawBgTree(t.x, groundY, t.height, t.trunkW, t.canopyR, alpha, d, sway, i % 3 === 0);
     }
 
     // --- near layer: wider, darker trees in the foreground corners ---
@@ -493,7 +532,7 @@ export function createWorld(canvas) {
       const t = nearTrees[i];
       const alpha = (0.38 + 0.2 * density);
       const sway = Math.sin(time * 0.00045 + i * 2.1) * 6;
-      drawBgTree(t.x, groundY, t.height, t.trunkW, t.canopyR, alpha, d, sway);
+      drawBgTree(t.x, groundY, t.height, t.trunkW, t.canopyR, alpha, d, sway, true);
     }
 
     // --- ground layer: bushes and ferns along the base ---
