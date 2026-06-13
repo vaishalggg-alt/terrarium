@@ -940,9 +940,9 @@ export function createDesert(canvas) {
     const ap = approachT(time, 14000);
     const walking = walkFrac(time, 14000);
     const drinkX = cx - r - 60;
-    const drinkY = groundY;
+    const drinkY = groundY + 24;
     const bx = lerp(-140, drinkX, ap);
-    const by = lerp(groundY, drinkY, ap);
+    const by = lerp(groundY + 24, drinkY, ap);
 
     const drinkT = ap === 1 ? 1 : 0;
     const chew = Math.abs(Math.sin(time * 0.0016)) * 2;
