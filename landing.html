@@ -471,62 +471,49 @@
 
 <script>
   // ── PERSISTENCE ─────────────────────────────────────────────────────────
-  const STORE_KEY = 'terrarium-landing-v1';
+  // Text saved separately from images to avoid localStorage quota errors.
 
   function getEditables() {
     return [...document.querySelectorAll('[contenteditable]')];
   }
 
   function assignIds() {
-    // Give every editable a stable data-eid based on position in DOM
     getEditables().forEach((el, i) => { if (!el.dataset.eid) el.dataset.eid = 'e' + i; });
   }
 
-  function saveAll() {
+  function saveText() {
     assignIds();
     const data = {};
     getEditables().forEach(el => { data[el.dataset.eid] = el.innerHTML; });
+    try { localStorage.setItem('tl-text', JSON.stringify(data)); } catch(e) {}
+  }
 
-    // Hero background image (base64 only, not video blob)
-    const heroBg = document.querySelector('#hero .hero-bg-img');
-    if (heroBg) data['__hero_bg__'] = heroBg.src;
-
-    // Biome images
-    document.querySelectorAll('.biome-visual').forEach((v, i) => {
-      const img = v.querySelector('.bv-img');
-      if (img) data['__biome_' + i + '__'] = img.src;
-    });
-
-    // Team photos
-    document.querySelectorAll('.dev-photo img').forEach((img, i) => {
-      data['__dev_photo_' + i + '__'] = img.src;
-    });
-
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch {}
+  function saveImageKey(key, dataUrl) {
+    try { localStorage.setItem(key, dataUrl); } catch(e) {}
   }
 
   function restoreAll() {
-    let data;
-    try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch {}
-    if (!data) return;
-
-    assignIds();
-    getEditables().forEach(el => {
-      if (data[el.dataset.eid] !== undefined) el.innerHTML = data[el.dataset.eid];
-    });
-
+    // Restore text
+    let textData;
+    try { textData = JSON.parse(localStorage.getItem('tl-text') || 'null'); } catch {}
+    if (textData) {
+      assignIds();
+      getEditables().forEach(el => {
+        if (textData[el.dataset.eid] !== undefined) el.innerHTML = textData[el.dataset.eid];
+      });
+    }
     // Hero background
-    if (data['__hero_bg__']) {
+    const heroBgSrc = localStorage.getItem('tl-hero-bg');
+    if (heroBgSrc) {
       const hero = document.getElementById('hero');
       let img = hero.querySelector('.hero-bg-img');
       if (!img) { img = document.createElement('img'); img.className = 'hero-bg-img'; hero.insertBefore(img, hero.firstChild); }
-      img.src = data['__hero_bg__'];
+      img.src = heroBgSrc;
       hero.style.background = '#000';
     }
-
     // Biome images
     document.querySelectorAll('.biome-visual').forEach((v, i) => {
-      const src = data['__biome_' + i + '__'];
+      const src = localStorage.getItem('tl-biome-' + i);
       if (!src) return;
       let img = v.querySelector('.bv-img');
       if (!img) { img = document.createElement('img'); img.className = 'bv-img'; v.insertBefore(img, v.firstChild); }
@@ -534,10 +521,9 @@
       const emoji = v.querySelector('.bv-emoji');
       if (emoji) emoji.style.opacity = '0';
     });
-
     // Team photos
     document.querySelectorAll('.dev-photo').forEach((card, i) => {
-      const src = data['__dev_photo_' + i + '__'];
+      const src = localStorage.getItem('tl-dev-' + i);
       if (!src) return;
       const placeholder = card.querySelector('.dev-photo-placeholder');
       if (placeholder) placeholder.style.display = 'none';
@@ -547,9 +533,10 @@
     });
   }
 
-  // Auto-save on any content change
-  document.addEventListener('input', saveAll);
-  document.addEventListener('focusout', saveAll);
+  // Save text on edits and before leaving the page
+  document.addEventListener('input', saveText);
+  document.addEventListener('focusout', saveText);
+  window.addEventListener('beforeunload', saveText);
 
   // Hero background — image or video
   function loadHeroBg(input) {
@@ -577,7 +564,7 @@
         img.src = e.target.result;
         hero.insertBefore(img, hero.firstChild);
         hero.style.background = '#000';
-        saveAll();
+        saveImageKey('tl-hero-bg', e.target.result);
       };
       reader.readAsDataURL(file);
     }
@@ -595,7 +582,9 @@
       img.src = e.target.result;
       const emoji = visual.querySelector('.bv-emoji');
       if (emoji) emoji.style.opacity = '0';
-      saveAll();
+      const allVisuals = [...document.querySelectorAll('.biome-visual')];
+      const idx = allVisuals.indexOf(visual);
+      saveImageKey('tl-biome-' + idx, e.target.result);
     };
     reader.readAsDataURL(input.files[0]);
   }
@@ -610,7 +599,10 @@
       let img = card.querySelector('img');
       if (!img) { img = document.createElement('img'); card.insertBefore(img, input); }
       img.src = e.target.result;
-      saveAll();
+      const allCards = [...document.querySelectorAll('.dev-photo')];
+      const cardEl = input.parentElement;
+      const idx = allCards.indexOf(cardEl);
+      saveImageKey('tl-dev-' + idx, e.target.result);
     };
     reader.readAsDataURL(input.files[0]);
   }
@@ -658,7 +650,7 @@
     del.className = 'textbox-delete';
     del.textContent = '×';
     del.title = 'Delete this block';
-    del.onclick = () => { wrapper.remove(); saveAll(); };
+    del.onclick = () => { wrapper.remove(); saveText(); };
     box.appendChild(del);
     wrapper.appendChild(box);
     zone.parentElement.insertBefore(wrapper, zone);
