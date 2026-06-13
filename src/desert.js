@@ -844,9 +844,9 @@ export function createDesert(canvas) {
 
     const ap = approachT(time, 11000);
     const drinkX = cx + r * 0.15;
-    const drinkY = cy - ry - 15;
+    const drinkY = cy - ry - 38;
     const restX  = cx + r * 0.15;
-    const restY  = cy - ry - 15;
+    const restY  = cy - ry - 38;
     const bx = lerp(restX, drinkX, ap);
     const by = lerp(restY, drinkY, ap);
 
