@@ -78,6 +78,25 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; padding: 60px 24px; position: relative; overflow: hidden;
   }
+  .hero-bg-img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; opacity: 0.55; pointer-events: none;
+  }
+  .img-upload-overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0); cursor: pointer; z-index: 10;
+    transition: background 0.2s;
+  }
+  body.edit-mode .img-upload-overlay:hover { background: rgba(0,0,0,0.35); }
+  .img-upload-overlay input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .img-upload-hint {
+    display: none; flex-direction: column; align-items: center; gap: 8px;
+    color: white; font-family: 'Nunito', sans-serif; font-weight: 800;
+    font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+    pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  }
+  .img-upload-hint span { font-size: 28px; }
+  body.edit-mode .img-upload-overlay:hover .img-upload-hint { display: flex; }
   .hero-canvas { position: absolute; inset: 0; pointer-events: none; }
   .hero-eyebrow {
     font-size: 13px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
@@ -145,7 +164,11 @@
   .biome { padding: 60px 24px; display: flex; align-items: center; justify-content: center; }
   .biome:nth-child(even) .biome-inner { flex-direction: row-reverse; }
   .biome-inner { max-width: 860px; width: 100%; display: flex; align-items: center; gap: 48px; }
-  .biome-visual { flex-shrink: 0; width: 220px; height: 220px; border-radius: 28px; display: flex; align-items: center; justify-content: center; font-size: 72px; position: relative; overflow: hidden; }
+  .biome-visual { flex-shrink: 0; width: 220px; height: 220px; border-radius: 28px; display: flex; align-items: center; justify-content: center; font-size: 72px; position: relative; overflow: hidden; cursor: default; }
+  .biome-visual .bv-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 28px; }
+  .biome-visual .img-upload-overlay { border-radius: 28px; }
+  body.edit-mode .biome-visual .img-upload-overlay { cursor: pointer; }
+  .biome-visual .bv-emoji { position: relative; z-index: 1; pointer-events: none; }
   .biome-content { flex: 1; min-width: 0; }
   .biome-tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; padding: 5px 12px; border-radius: 20px; margin-bottom: 14px; }
   .biome-content h3 { font-family: 'Lora', serif; font-size: clamp(24px, 3vw, 32px); font-weight: 600; color: var(--ink); margin-bottom: 12px; line-height: 1.2; }
@@ -250,7 +273,12 @@
 </div>
 
 <!-- HERO -->
-<section class="hero">
+<section class="hero" id="hero">
+  <!-- upload overlay (edit mode only) -->
+  <div class="img-upload-overlay" title="Change hero background">
+    <div class="img-upload-hint"><span>🖼</span>Change background</div>
+    <input type="file" accept="image/*" onchange="loadHeroBg(this)"/>
+  </div>
   <svg class="hero-canvas" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <circle cx="120" cy="80" r="1.2" fill="rgba(255,255,255,0.6)"/>
     <circle cx="340" cy="50" r="0.8" fill="rgba(255,255,255,0.4)"/>
@@ -323,7 +351,7 @@
 <!-- VOLCANO -->
 <section class="biome b-volcano">
   <div class="biome-inner reveal">
-    <div class="biome-visual">🌋</div>
+    <div class="biome-visual"><span class="bv-emoji">🌋</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
     <div class="biome-content">
       <span class="biome-tag" contenteditable="true">Stress & Movement</span>
       <h3 contenteditable="true">The Volcano</h3>
@@ -336,7 +364,7 @@
 <!-- CHERRY BLOSSOM -->
 <section class="biome b-cherry">
   <div class="biome-inner reveal">
-    <div class="biome-visual">🌸</div>
+    <div class="biome-visual"><span class="bv-emoji">🌸</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
     <div class="biome-content">
       <span class="biome-tag" contenteditable="true">Stillness & Rest</span>
       <h3 contenteditable="true">The Cherry Blossom Garden</h3>
@@ -349,7 +377,7 @@
 <!-- OCEAN -->
 <section class="biome b-ocean">
   <div class="biome-inner reveal">
-    <div class="biome-visual">🌊</div>
+    <div class="biome-visual"><span class="bv-emoji">🌊</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
     <div class="biome-content">
       <span class="biome-tag" contenteditable="true">Expression</span>
       <h3 contenteditable="true">The Ocean</h3>
@@ -362,7 +390,7 @@
 <!-- JUNGLE -->
 <section class="biome b-jungle">
   <div class="biome-inner reveal">
-    <div class="biome-visual">🌴</div>
+    <div class="biome-visual"><span class="bv-emoji">🌴</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
     <div class="biome-content">
       <span class="biome-tag" contenteditable="true">Sleep</span>
       <h3 contenteditable="true">The Jungle</h3>
@@ -375,7 +403,7 @@
 <!-- FOREST -->
 <section class="biome b-forest">
   <div class="biome-inner reveal">
-    <div class="biome-visual">🌲</div>
+    <div class="biome-visual"><span class="bv-emoji">🌲</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
     <div class="biome-content">
       <span class="biome-tag" contenteditable="true">Movement & Mood</span>
       <h3 contenteditable="true">The Forest</h3>
@@ -388,7 +416,7 @@
 <!-- OASIS -->
 <section class="biome b-oasis">
   <div class="biome-inner reveal">
-    <div class="biome-visual">🏜️</div>
+    <div class="biome-visual"><span class="bv-emoji">🏜️</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
     <div class="biome-content">
       <span class="biome-tag" contenteditable="true">Hydration</span>
       <h3 contenteditable="true">The Oasis</h3>
@@ -401,7 +429,7 @@
 <!-- TUNDRA -->
 <section class="biome b-tundra">
   <div class="biome-inner reveal">
-    <div class="biome-visual">🌨️</div>
+    <div class="biome-visual"><span class="bv-emoji">🌨️</span><div class="img-upload-overlay"><div class="img-upload-hint"><span>🖼</span>Add image</div><input type="file" accept="image/*" onchange="loadBiomeImg(this)"/></div></div>
     <div class="biome-content">
       <span class="biome-tag" contenteditable="true">Processing</span>
       <h3 contenteditable="true">The Tundra</h3>
@@ -459,6 +487,44 @@
 <footer contenteditable="true">TERRARIUM · YOUR LIVING WORLD</footer>
 
 <script>
+  // Hero background image
+  function loadHeroBg(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const hero = document.getElementById('hero');
+      let img = hero.querySelector('.hero-bg-img');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'hero-bg-img';
+        hero.insertBefore(img, hero.firstChild);
+      }
+      img.src = e.target.result;
+      hero.style.background = '#000';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
+  // Biome image
+  function loadBiomeImg(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const visual = input.closest('.biome-visual');
+      let img = visual.querySelector('.bv-img');
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'bv-img';
+        visual.insertBefore(img, visual.firstChild);
+      }
+      img.src = e.target.result;
+      // Dim the emoji once image is set
+      const emoji = visual.querySelector('.bv-emoji');
+      if (emoji) emoji.style.opacity = '0';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+
   function loadPhoto(input) {
     if (!input.files || !input.files[0]) return;
     const reader = new FileReader();
