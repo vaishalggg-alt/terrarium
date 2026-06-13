@@ -458,17 +458,6 @@ export function createWorld(canvas) {
       ctx.closePath();
       ctx.fill();
 
-      // Irregular edge bumps — makes it look leafy, not geometric
-      ctx.fillStyle = col;
-      const bumpCount = 7;
-      for (let b = 0; b < bumpCount; b++) {
-        const bt = b / (bumpCount - 1);
-        const bx2 = tx - aw + bt * aw * 2;
-        const by2 = ty - ah * (0.25 + Math.sin(bt * Math.PI) * 0.75) + Math.sin(b * 2.3) * canopyR * 0.18;
-        ctx.beginPath();
-        ctx.arc(bx2, by2, canopyR * (0.22 + Math.abs(Math.sin(b * 1.7)) * 0.18), 0, TAU);
-        ctx.fill();
-      }
     } else {
       // Original rounded blob canopy
       const blobs = [
