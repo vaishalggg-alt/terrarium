@@ -630,21 +630,22 @@ const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, 
 
 // ---- map -------------------------------------------------------------------
 
-// Organic island outline — smooth Catmull-Rom bezier
+// Irregular island outline — deliberately asymmetric, with a bay and peninsula
 const LAND_PTS = [
-  [0.20,0.14],[0.36,0.07],[0.53,0.08],[0.68,0.12],[0.82,0.20],
-  [0.91,0.34],[0.93,0.50],[0.88,0.65],[0.77,0.79],[0.62,0.88],
-  [0.45,0.91],[0.29,0.86],[0.16,0.76],[0.09,0.61],[0.08,0.45],[0.13,0.30],
+  [0.12,0.26],[0.22,0.10],[0.40,0.06],[0.56,0.05],[0.68,0.09],
+  [0.80,0.16],[0.90,0.26],[0.93,0.40],[0.88,0.50],[0.92,0.60],
+  [0.88,0.72],[0.76,0.84],[0.60,0.91],[0.42,0.93],[0.26,0.88],
+  [0.14,0.78],[0.06,0.62],[0.05,0.46],[0.08,0.34],
 ];
 
-// Biome seed positions — Voronoi assigns every pixel on the island to the nearest seed
+// Seeds pushed to coastlines so Voronoi cuts feel geographic, not pie-chart-ish
 const MAP_REGIONS = [
-  { id:'forest',  label:'Forest',  emoji:'🌲', lx:0.43, ly:0.27, rgb:[68,148,52],  light:'#80cc70' },
-  { id:'blossom', label:'Garden',  emoji:'🌸', lx:0.70, ly:0.27, rgb:[196,108,168],light:'#e898cc' },
-  { id:'ocean',   label:'Ocean',   emoji:'🌊', lx:0.82, ly:0.53, rgb:[44,152,200], light:'#60d0f8' },
-  { id:'jungle',  label:'Jungle',  emoji:'🌴', lx:0.58, ly:0.76, rgb:[44,152,72],  light:'#68d880' },
-  { id:'volcano', label:'Volcano', emoji:'🌋', lx:0.26, ly:0.70, rgb:[212,72,44],  light:'#f09070' },
-  { id:'desert',  label:'Desert',  emoji:'🏜️', lx:0.22, ly:0.40, rgb:[212,172,44], light:'#f0d860' },
+  { id:'forest',  label:'Forest',  emoji:'🌲', lx:0.35, ly:0.22, rgb:[58,138,44],  light:'#80cc70' },
+  { id:'blossom', label:'Garden',  emoji:'🌸', lx:0.74, ly:0.16, rgb:[196,108,168],light:'#e898cc' },
+  { id:'ocean',   label:'Ocean',   emoji:'🌊', lx:0.91, ly:0.52, rgb:[34,142,196], light:'#60d0f8' },
+  { id:'jungle',  label:'Jungle',  emoji:'🌴', lx:0.60, ly:0.82, rgb:[38,148,64],  light:'#68d880' },
+  { id:'volcano', label:'Volcano', emoji:'🌋', lx:0.20, ly:0.74, rgb:[208,68,40],  light:'#f09070' },
+  { id:'desert',  label:'Desert',  emoji:'🏜️', lx:0.13, ly:0.46, rgb:[208,168,44], light:'#f0d860' },
 ];
 
 // Draw the island outline as a smooth closed Catmull-Rom spline
@@ -662,35 +663,33 @@ function traceLand(ctx, W, H) {
   ctx.closePath();
 }
 
-// Build a Voronoi-coloured ImageData for the island at half resolution
+// Build a Voronoi-coloured ImageData for the island at full resolution
 function buildVoronoi(W, H) {
-  const sw = Math.ceil(W/2), sh = Math.ceil(H/2);
-
-  // Render landmass mask at half size
+  // Render landmass mask at full size
   const mc = document.createElement('canvas');
-  mc.width = sw; mc.height = sh;
+  mc.width = W; mc.height = H;
   const mCtx = mc.getContext('2d');
-  traceLand(mCtx, sw, sh);
+  traceLand(mCtx, W, H);
   mCtx.fillStyle = '#fff';
   mCtx.fill();
-  const mask = mCtx.getImageData(0, 0, sw, sh).data;
+  const mask = mCtx.getImageData(0, 0, W, H).data;
 
   // Voronoi colour per pixel
-  const imgD = mCtx.createImageData(sw, sh);
-  for (let y = 0; y < sh; y++) {
-    for (let x = 0; x < sw; x++) {
-      const pi = (y*sw+x)*4;
+  const imgD = mCtx.createImageData(W, H);
+  // Precompute seed pixel coords
+  const seeds = MAP_REGIONS.map(r => [r.lx * W, r.ly * H, r.rgb]);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const pi = (y*W+x)*4;
       if (mask[pi+3] < 128) continue;
       let minD = Infinity, bi = 0;
-      for (let i = 0; i < MAP_REGIONS.length; i++) {
-        const r = MAP_REGIONS[i];
-        const dx = x/sw - r.lx, dy = y/sh - r.ly;
+      for (let i = 0; i < seeds.length; i++) {
+        const dx = x - seeds[i][0], dy = y - seeds[i][1];
         const d = dx*dx + dy*dy;
         if (d < minD) { minD = d; bi = i; }
       }
-      // Slight top-light so it feels 3D
-      const bright = 1 + (0.5 - y/sh) * 0.28;
-      const [r,g,b] = MAP_REGIONS[bi].rgb;
+      const bright = 1 + (0.46 - y/H) * 0.30;
+      const [r,g,b] = seeds[bi][2];
       imgD.data[pi]   = Math.min(255, r * bright | 0);
       imgD.data[pi+1] = Math.min(255, g * bright | 0);
       imgD.data[pi+2] = Math.min(255, b * bright | 0);
@@ -698,7 +697,7 @@ function buildVoronoi(W, H) {
     }
   }
   const vc = document.createElement('canvas');
-  vc.width = sw; vc.height = sh;
+  vc.width = W; vc.height = H;
   vc.getContext('2d').putImageData(imgD, 0, 0);
   return vc;
 }
@@ -775,7 +774,6 @@ function MapView({ onSelect }) {
       ctx.save();
       traceLand(ctx, W, H);
       ctx.clip();
-      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(vcRef.current, 0, 0, W, H);
 
       // Hover glow inside island
