@@ -30,8 +30,17 @@ export function createVolcano(canvas) {
   let pressure = 0, release = 0;
   let smokeP = [];
   let eruptP = [];
+  let geyserP = [];
   let raf = 0;
   let t0 = performance.now();
+
+  // Fixed geyser vent positions (x as fraction of W, offset from groundY)
+  const GEYSER_VENTS = [
+    { xf: 0.12, phase: 0.0  },
+    { xf: 0.22, phase: 1.7  },
+    { xf: 0.76, phase: 0.9  },
+    { xf: 0.88, phase: 2.4  },
+  ];
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -521,6 +530,100 @@ export function createVolcano(canvas) {
     }
   }
 
+  // ── geysers ──────────────────────────────────────────────────────────────
+
+  function spawnGeyserParticles(time) {
+    const { groundY } = geo();
+    const imbalance = clamp(Math.abs(pressure - release) - 0.15, 0, 1) / 0.85;
+    if (imbalance < 0.05) return;
+
+    for (const v of GEYSER_VENTS) {
+      const vx = W * v.xf;
+      // Each vent erupts on a staggered sine cycle; amplitude driven by imbalance
+      const cycle = Math.sin(time * 0.0018 + v.phase);
+      if (cycle < 0.55) continue; // only erupt on upswing
+      const burst = (cycle - 0.55) / 0.45; // 0→1 within eruption window
+      const rate = 0.18 + imbalance * 0.55;
+      if (Math.random() > rate || geyserP.length >= 120) continue;
+
+      const speed = (2 + imbalance * 6) * burst;
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * (0.25 + imbalance * 0.4);
+      const isStress = pressure > release; // stress-heavy = orange tint; exercise-heavy = white/blue
+      const col = isStress
+        ? `rgba(${(220 + Math.random() * 35) | 0},${(90 + Math.random() * 60) | 0},20,`
+        : `rgba(${(200 + Math.random() * 55) | 0},${(220 + Math.random() * 35) | 0},${(230 + Math.random() * 25) | 0},`;
+
+      geyserP.push({
+        x: vx + (Math.random() - 0.5) * 6,
+        y: groundY - 4,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        gravity: 0.09 + Math.random() * 0.06,
+        size: 3 + Math.random() * (3 + imbalance * 6),
+        alpha: 0.65 + Math.random() * 0.3,
+        col,
+        age: 0,
+        maxAge: 40 + Math.random() * 50,
+      });
+    }
+  }
+
+  function updateGeyserParticles() {
+    geyserP = geyserP.filter((p) => p.age < p.maxAge && p.alpha > 0.02);
+    for (const p of geyserP) {
+      p.age++;
+      p.x += p.vx; p.y += p.vy;
+      p.vy += p.gravity;
+      p.vx += (Math.random() - 0.5) * 0.15;
+      p.size = lerp(p.size, p.size * 2.5, 0.025);
+      p.alpha = (1 - ease(p.age / p.maxAge)) * 0.65;
+    }
+  }
+
+  function drawGeysers(time) {
+    const { groundY } = geo();
+    const imbalance = clamp(Math.abs(pressure - release) - 0.15, 0, 1) / 0.85;
+
+    for (const v of GEYSER_VENTS) {
+      const vx = W * v.xf;
+      const cycle = Math.sin(time * 0.0018 + v.phase);
+      const burst = clamp((cycle - 0.55) / 0.45, 0, 1) * imbalance;
+
+      // Vent opening — small rocky oval in ground
+      ctx.fillStyle = 'rgba(22,14,10,0.75)';
+      ctx.beginPath(); ctx.ellipse(vx, groundY - 1, 9, 4, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(48,28,14,0.6)';
+      ctx.beginPath(); ctx.ellipse(vx, groundY - 2, 6, 2.5, 0, 0, TAU); ctx.fill();
+
+      if (burst < 0.05 || imbalance < 0.05) continue;
+
+      // Steam column glow
+      const colH = burst * (60 + imbalance * H * 0.28);
+      const isStress = pressure > release;
+      const glowCol = isStress ? [255, 100, 20] : [180, 220, 255];
+      const cg = ctx.createLinearGradient(vx, groundY, vx, groundY - colH);
+      cg.addColorStop(0,   `rgba(${glowCol.join(',')},${0.35 * burst})`);
+      cg.addColorStop(0.4, `rgba(${glowCol.join(',')},${0.18 * burst})`);
+      cg.addColorStop(1,   `rgba(${glowCol.join(',')},0)`);
+      const colW = 8 + burst * 16 + imbalance * 12;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.moveTo(vx - colW, groundY);
+      ctx.quadraticCurveTo(vx - colW * 0.4, groundY - colH * 0.5, vx, groundY - colH);
+      ctx.quadraticCurveTo(vx + colW * 0.4, groundY - colH * 0.5, vx + colW, groundY);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw geyser particles
+    for (const p of geyserP) {
+      ctx.fillStyle = p.col + p.alpha + ')';
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill();
+    }
+  }
+
   // ── frame loop ───────────────────────────────────────────────────────────
 
   function frame(now) {
@@ -539,10 +642,13 @@ export function createVolcano(canvas) {
     drawSky(state, day, time);
     drawBackground(state, day);
     drawGround(state, day);
+    drawGeysers(time);
     drawVolcanoMountain(state, day, time);
     spawnSmoke(state);
     spawnEruption(state);
+    spawnGeyserParticles(time);
     updateParticles();
+    updateGeyserParticles();
     drawSmoke();
     drawCrater(state, day, time);
     drawEruptionParticles();
