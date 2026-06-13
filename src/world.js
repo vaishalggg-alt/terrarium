@@ -141,10 +141,17 @@ export function createWorld(canvas) {
   let steps = 0;
   let parts = [];
   let stepButterflies = [];
+  let flyingBirds = [];
+  let perchBirds = [];
+  let groundBushes = [];
+  let groundFlowers = [];
   let fireflies = [];
   let raf = 0;
   let t0 = performance.now();
   let mothState = { x: 0, y: 0, phase: 0 };
+
+  // 0 at 500 steps, 1 at 25 000 steps
+  function getStepT() { return clamp((steps - 500) / 24500, 0, 1); }
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -152,7 +159,7 @@ export function createWorld(canvas) {
     canvas.width = W * dpr; canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     rebuildParticles();
-    rebuildStepButterflies();
+    rebuildStepFeatures();
   }
 
   function rebuildParticles() {
@@ -164,10 +171,61 @@ export function createWorld(canvas) {
     });
   }
 
-  function rebuildStepButterflies() {
-    const density = clamp(steps / 4000, 0, 1);
-    const n = Math.round(density * 18);
-    stepButterflies = Array.from({ length: n }, () => makeParticle('butterflies', W, H));
+  function rebuildStepFeatures() {
+    const t = getStepT();
+
+    // Butterflies scale with steps 500→10000
+    const butterflyT = clamp((steps - 500) / 9500, 0, 1);
+    stepButterflies = Array.from({ length: Math.round(butterflyT * 18) }, () => makeParticle('butterflies', W, H));
+
+    // Flying birds appear at stepT 0.35 (~9 000 steps)
+    const flyT = clamp((t - 0.35) / 0.50, 0, 1);
+    flyingBirds = Array.from({ length: Math.round(flyT * 10) }, () => ({
+      x: Math.random() * W,
+      y: H * (0.04 + Math.random() * 0.26),
+      vx: (0.25 + Math.random() * 0.45) * (Math.random() > 0.5 ? 1 : -1),
+      sc: 0.5 + Math.random() * 0.8,
+      flapPhase: Math.random() * TAU,
+    }));
+
+    // Perched birds — deterministic, stepT 0.15 (~4 200 steps)
+    const perchT = clamp((t - 0.15) / 0.45, 0, 1);
+    const pr = rng(66);
+    perchBirds = Array.from({ length: Math.round(perchT * 7) }, () => ({
+      x: W * (0.04 + pr() * 0.92),
+      y: H * (0.10 + pr() * 0.32),
+      flip: pr() > 0.5,
+      sc: 0.55 + pr() * 0.6,
+    }));
+
+    // Flower bushes — deterministic, from stepT 0
+    const bushR = rng(88);
+    const bushCount = 3 + Math.round(t * 13);
+    groundBushes = Array.from({ length: bushCount }, (_, i) => {
+      const leftSide = i % 3 !== 1;
+      const x = leftSide
+        ? (i % 2 === 0 ? bushR() * W * 0.38 : W * (0.62 + bushR() * 0.36))
+        : W * (0.14 + bushR() * 0.72);
+      return {
+        x,
+        blobW: (28 + bushR() * 55) * (0.35 + t * 0.65),
+        blobH: (20 + bushR() * 35) * (0.35 + t * 0.65),
+        hue: bushR(),
+        density: 0.45 + bushR() * 0.55,
+        seed: i * 17 + 3,
+      };
+    });
+
+    // Wild flowers — deterministic, stepT 0.04 (~1 500 steps)
+    const flowerT = clamp((t - 0.04) / 0.60, 0, 1);
+    const fr = rng(99);
+    groundFlowers = Array.from({ length: Math.round(flowerT * 45) }, () => ({
+      x: fr() * W,
+      yOff: fr() * H * 0.11,
+      hue: Math.floor(fr() * 5),
+      sz: 2.5 + fr() * 4.5,
+      stemH: 7 + fr() * 14,
+    }));
   }
 
   function setData({ checkins, weather: w, moth: m, steps: s = 0 }) {
@@ -176,7 +234,7 @@ export function createWorld(canvas) {
     else if (w) weather = w;
     moth = !!m;
     const newSteps = s | 0;
-    if (newSteps !== steps) { steps = newSteps; rebuildStepButterflies(); }
+    if (newSteps !== steps) { steps = newSteps; rebuildStepFeatures(); }
   }
 
   // recursive limb draw: tapered bark limbs, children attach along the parent,
@@ -390,8 +448,7 @@ export function createWorld(canvas) {
   }
 
   function drawBackgroundForest(daylight, time) {
-    // full background at ~3000 steps; already noticeable at ~500
-    const density = clamp(steps / 3000, 0, 1);
+    const density = getStepT();
     if (density <= 0) return;
     const groundY = H * 0.87;
     const d = 0.35 + daylight * 0.65;
@@ -630,13 +687,230 @@ export function createWorld(canvas) {
     ctx.restore();
   }
 
+  // ── god rays ────────────────────────────────────────────────────────────
+  function drawGodRays(daylight, stepT) {
+    if (stepT < 0.22 || daylight < 0.25) return;
+    const t = clamp((stepT - 0.22) / 0.45, 0, 1);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const rays = [
+      { ax: 0.36, bx: 0.10, w: 0.16 },
+      { ax: 0.46, bx: 0.30, w: 0.10 },
+      { ax: 0.54, bx: 0.68, w: 0.10 },
+      { ax: 0.62, bx: 0.82, w: 0.14 },
+      { ax: 0.50, bx: 0.48, w: 0.08 },
+    ];
+    for (const ray of rays) {
+      const x1 = W * ray.ax, x2 = W * ray.bx;
+      const rw = W * ray.w;
+      const g = ctx.createLinearGradient(x1, 0, x2, H * 0.92);
+      const a = t * daylight * 0.07;
+      g.addColorStop(0,   `rgba(210,235,185,${a * 2.0})`);
+      g.addColorStop(0.4, `rgba(210,235,185,${a * 0.8})`);
+      g.addColorStop(1,   `rgba(210,235,185,0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(x1 - rw * 0.06, 0);
+      ctx.lineTo(x2 - rw,        H * 0.92);
+      ctx.lineTo(x2 + rw,        H * 0.92);
+      ctx.lineTo(x1 + rw * 0.06, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── hanging vines / moss ─────────────────────────────────────────────
+  function drawHangingVines(daylight, stepT) {
+    if (stepT < 0.40) return;
+    const t = clamp((stepT - 0.40) / 0.40, 0, 1);
+    const d = 0.38 + daylight * 0.62;
+    const r = rng(42);
+    const count = Math.round(t * 16);
+    for (let i = 0; i < count; i++) {
+      const onLeft = i % 2 === 0;
+      const x = onLeft ? r() * W * 0.32 : W * (0.68 + r() * 0.32);
+      const len = H * (0.22 + r() * 0.48);
+      const sway = (r() - 0.5) * 24;
+      const alpha = (0.45 + r() * 0.45) * t;
+      ctx.strokeStyle = `rgba(${(34*d)|0},${(62*d)|0},${(26*d)|0},${alpha})`;
+      ctx.lineWidth = 1.2 + r() * 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.bezierCurveTo(x + sway * 0.3, len * 0.32, x + sway * 0.7, len * 0.66, x + sway, len);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(${(38*d)|0},${(85*d)|0},${(34*d)|0},${alpha * 0.75})`;
+      for (let j = 1; j <= 5; j++) {
+        const vt = j / 6;
+        const vx = lerp(x, x + sway, vt);
+        const vy = len * vt;
+        ctx.beginPath();
+        ctx.ellipse(vx, vy, 4 + r() * 6, 2.5 + r() * 3.5, r() * TAU, 0, TAU);
+        ctx.fill();
+      }
+    }
+  }
+
+  // ── rose / flower bushes ─────────────────────────────────────────────
+  function drawFlowerBushes(daylight, stepT) {
+    if (stepT <= 0) return;
+    const groundY = H * 0.87;
+    const d = 0.38 + daylight * 0.62;
+    for (const bush of groundBushes) {
+      const { x, blobW, blobH, hue, density, seed } = bush;
+      const br = rng(seed);
+      // Green foliage blobs
+      for (let b = 0; b < 5; b++) {
+        ctx.fillStyle = `rgba(${(36*d)|0},${(82*d)|0},${(32*d)|0},${0.72 * density})`;
+        ctx.beginPath();
+        ctx.ellipse(
+          x + (br() - 0.5) * blobW,
+          groundY - blobH * (0.15 + br() * 0.55),
+          blobW * (0.35 + br() * 0.32),
+          blobH * (0.35 + br() * 0.32),
+          (br() - 0.5) * 0.7, 0, TAU
+        );
+        ctx.fill();
+      }
+      // Flower blooms
+      const flowerN = Math.round(5 + density * 14);
+      for (let f = 0; f < flowerN; f++) {
+        const fx = x + (br() - 0.5) * blobW * 1.15;
+        const fy = groundY - blobH * (0.28 + br() * 0.88);
+        const fs = 4 + br() * 10;
+        let pc;
+        if (hue > 0.60) pc = [230*d, 155*d, 180*d];      // pink
+        else if (hue > 0.32) pc = [190*d, 138*d, 210*d]; // mauve/purple
+        else pc = [240*d, 232*d, 238*d];                  // white
+        ctx.fillStyle = `rgba(${pc[0]|0},${pc[1]|0},${pc[2]|0},0.88)`;
+        for (let p = 0; p < 5; p++) {
+          const a = (p / 5) * TAU;
+          ctx.beginPath();
+          ctx.ellipse(fx + Math.cos(a) * fs * 0.55, fy + Math.sin(a) * fs * 0.55, fs * 0.52, fs * 0.30, a, 0, TAU);
+          ctx.fill();
+        }
+        ctx.fillStyle = `rgba(${(255*d)|0},${(218*d)|0},${(165*d)|0},0.92)`;
+        ctx.beginPath(); ctx.arc(fx, fy, fs * 0.24, 0, TAU); ctx.fill();
+      }
+    }
+  }
+
+  // ── wildflowers on the ground ───────────────────────────────────────
+  function drawWildflowers(daylight, stepT) {
+    const flowerT = clamp((stepT - 0.04) / 0.60, 0, 1);
+    if (flowerT <= 0) return;
+    const groundY = H * 0.87;
+    const d = 0.38 + daylight * 0.62;
+    const COLS = [
+      [255*d,255*d,255*d], // white
+      [255*d,228*d, 75*d], // yellow
+      [255*d,148*d,168*d], // pink
+      [175*d,128*d,255*d], // purple
+      [255*d,175*d, 75*d], // orange
+    ];
+    for (const fl of groundFlowers) {
+      const { x, yOff, hue, sz, stemH } = fl;
+      const y = groundY + yOff - 4;
+      const c = COLS[hue];
+      ctx.strokeStyle = `rgba(${(52*d)|0},${(108*d)|0},${(44*d)|0},0.72)`;
+      ctx.lineWidth = 1; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - stemH); ctx.stroke();
+      ctx.fillStyle = `rgba(${c[0]|0},${c[1]|0},${c[2]|0},0.85)`;
+      for (let p = 0; p < 6; p++) {
+        const a = (p / 6) * TAU;
+        ctx.beginPath();
+        ctx.ellipse(x + Math.cos(a) * sz * 0.68, y - stemH + Math.sin(a) * sz * 0.68, sz * 0.44, sz * 0.26, a, 0, TAU);
+        ctx.fill();
+      }
+      ctx.fillStyle = `rgba(${(255*d)|0},${(228*d)|0},${(120*d)|0},0.92)`;
+      ctx.beginPath(); ctx.arc(x, y - stemH, sz * 0.28, 0, TAU); ctx.fill();
+    }
+  }
+
+  // ── atmospheric mist layers ─────────────────────────────────────────
+  function drawForestMist(daylight, stepT) {
+    if (stepT < 0.28) return;
+    const t = clamp((stepT - 0.28) / 0.48, 0, 1);
+    const groundY = H * 0.87;
+    ctx.save();
+    for (let i = 0; i < 4; i++) {
+      const y = groundY - H * (0.02 + i * 0.10);
+      const g = ctx.createLinearGradient(0, y - 35, 0, y + 35);
+      const a = t * (0.055 - i * 0.01) * Math.max(daylight, 0.2);
+      g.addColorStop(0, 'rgba(195,215,190,0)');
+      g.addColorStop(0.5, `rgba(195,215,190,${a})`);
+      g.addColorStop(1, 'rgba(195,215,190,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, y - 35, W, 70);
+    }
+    ctx.restore();
+  }
+
+  // ── perched birds ───────────────────────────────────────────────────
+  function drawPerchedBirds(daylight) {
+    if (!perchBirds.length) return;
+    const d = 0.38 + daylight * 0.62;
+    for (const b of perchBirds) {
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      if (b.flip) ctx.scale(-1, 1);
+      ctx.scale(b.sc, b.sc);
+      ctx.fillStyle = `rgba(${(30*d)|0},${(24*d)|0},${(18*d)|0},0.90)`;
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 5.5, 0.12, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(-7, -4.5, 4.5, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(15,-1.5); ctx.lineTo(15,3); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = `rgba(${(68*d)|0},${(55*d)|0},${(32*d)|0},0.92)`;
+      ctx.beginPath(); ctx.moveTo(-10,-4); ctx.lineTo(-14,-2.5); ctx.lineTo(-11,-5.5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath(); ctx.arc(-7.5,-5, 1.4, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.9)';
+      ctx.beginPath(); ctx.arc(-7.5,-5, 0.8, 0, TAU); ctx.fill();
+      ctx.strokeStyle = `rgba(${(52*d)|0},${(42*d)|0},${(26*d)|0},0.72)`;
+      ctx.lineWidth = 1; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-2,5); ctx.lineTo(-5,10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(2,5);  ctx.lineTo(-1,10); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ── flying birds ────────────────────────────────────────────────────
+  function drawFlyingBirds() {
+    for (const b of flyingBirds) {
+      b.flapPhase += 0.09;
+      b.x += b.vx;
+      if (b.x > W + 30) b.x = -30;
+      if (b.x < -30)    b.x = W + 30;
+      const flap = Math.sin(b.flapPhase) * 3;
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.scale(b.sc, b.sc);
+      ctx.strokeStyle = 'rgba(28,22,16,0.72)';
+      ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-11, flap);
+      ctx.quadraticCurveTo(-5, 0, 0, -flap);
+      ctx.quadraticCurveTo(5, 0, 11, flap);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   function frame(now) {
     const time = now - t0;
     const sky = skyState(clockDate());
+    const st = getStepT();
     drawSky(sky);
     drawBackgroundForest(sky.day, time);
+    drawHangingVines(sky.day, st);
+    drawGodRays(sky.day, st);
+    drawForestMist(sky.day, st);
+    drawFlowerBushes(sky.day, st);
     drawGround(sky.day);
+    drawWildflowers(sky.day, st);
     drawTree(time, sky.day);
+    drawPerchedBirds(sky.day);
+    drawFlyingBirds();
     drawWeather(time, sky.day);
     drawStepButterflies(time);
     if (sky.day < 0.3) drawFireflies(time);
