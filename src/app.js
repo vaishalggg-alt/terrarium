@@ -9,7 +9,7 @@ import {
 } from './store.js';
 import {
   subscribeOcean, getLetters, addLetter, removeLetter, resetOcean,
-  letterStreak, bottledToday, whaleAwakened,
+  letterStreak, bottledToday,
 } from './ocean-store.js';
 import {
   subscribeDesert, getLogs, addWater, resetDesert,
@@ -98,7 +98,7 @@ function OceanWorld() {
   }, []);
 
   useEffect(() => {
-    world.current?.setData({ letters, whale: whaleAwakened() });
+    world.current?.setData({ letters });
   }, [letters]);
 
   const takeBack = () => {
@@ -680,7 +680,6 @@ function App() {
 
   const dom = biome === 'forest' ? dominantEmotion() : null;
   const moth = biome === 'forest' && mothAwakened();
-  const whale = biome === 'ocean' && whaleAwakened();
   const animals = biome === 'desert' ? animalsPresent() : null;
   const bio = biome === 'jungle' ? bioLevel() : 0;
 
@@ -720,7 +719,6 @@ function App() {
       </header>
 
       ${moth && html`<div class="discovery">🦋 A glowing moth has appeared — it only comes when you've shown vulnerability three nights running.</div>`}
-      ${whale && html`<div class="discovery">🐋 A luminous whale now glides through your sea — drawn up from the deep once you let five letters go.</div>`}
       ${animals?.camel && html`<div class="discovery">🐪 A camel has arrived — the oasis is full at ${GOAL}L. Incredible dedication.</div>`}
       ${animals && !animals.camel && animals.owl && html`<div class="discovery">🦉 A burrowing owl is watching from the rocks — you've drunk 5L today.</div>`}
       ${animals && !animals.owl && animals.coyote && html`<div class="discovery">🐺 A coyote crept in at dusk — 4L reached. Halfway to a full oasis.</div>`}

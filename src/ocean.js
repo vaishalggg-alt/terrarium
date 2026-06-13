@@ -55,14 +55,13 @@ export function createOcean(canvas, { onBottleClick } = {}) {
   let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
   let letters = [];
   let bottles = [];
-  let whale = false;
+  // whale removed
   let fish = [];
   let plankton = [];
   let jellies = [];
   let raf = 0;
   let t0 = performance.now();
   let lastTime = 0;
-  let whaleState = { phase: 0.1 };
 
   // ── perspective helpers ──────────────────────────────────────────────────
   // d=0: near shore (bottom of water), d=1: far horizon (top of water)
@@ -117,13 +116,12 @@ export function createOcean(canvas, { onBottleClick } = {}) {
     });
   }
 
-  function setData({ letters: ls, whale: wh }) {
+  function setData({ letters: ls }) {
     // Only animate if a letter was added while ocean was already mounted
     // (letters.length > 0 guards against the "fresh mount with saved data" case)
     const isNew = letters.length > 0 && ls.length > letters.length;
     const changed = ls.length !== letters.length;
     letters = ls;
-    whale = !!wh;
     const currentTime = performance.now() - t0;
     rebuildBottles(isNew, currentTime);
     if (changed) rebuildLife();
@@ -566,7 +564,6 @@ export function createOcean(canvas, { onBottleClick } = {}) {
     drawSky(sky);
     drawWater(sky, time);
     drawDeepLife(sky, time);
-    if (whale) drawWhale(sky, time);
     drawFish(sky, time);
     for (const b of bottles) drawBottle(b, time);
     raf = requestAnimationFrame(frame);
