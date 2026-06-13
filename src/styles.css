@@ -352,7 +352,7 @@ body { overflow: hidden; background: #10131a; color: var(--ink); }
 }
 
 /* ── Mobile / iPhone responsive ─────────────────────────────────────────── */
-@media (max-width: 559px) {
+@media (max-width: 767px) and (orientation: landscape) {
 
   /* Safe-area: header clears notch */
   .top {
