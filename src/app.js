@@ -631,12 +631,12 @@ const CONFIGS = { forest: FOREST, ocean: OCEAN, desert: DESERT, jungle: JUNGLE, 
 // ---- map -------------------------------------------------------------------
 
 const MAP_REGIONS = [
-  { id: 'forest',  label: 'Forest',  emoji: '🌲', x: 0.48, y: 0.22, color: '#4a7c3f', glow: '#6dbf5a' },
-  { id: 'ocean',   label: 'Ocean',   emoji: '🌊', x: 0.80, y: 0.52, color: '#2a6b8a', glow: '#4fc3f7' },
-  { id: 'desert',  label: 'Desert',  emoji: '🏜️', x: 0.18, y: 0.42, color: '#b8860b', glow: '#fdd835' },
-  { id: 'jungle',  label: 'Jungle',  emoji: '🌴', x: 0.58, y: 0.76, color: '#2e7d32', glow: '#aed581' },
-  { id: 'volcano', label: 'Volcano', emoji: '🌋', x: 0.24, y: 0.70, color: '#8b1a1a', glow: '#ff7043' },
-  { id: 'blossom', label: 'Garden',  emoji: '🌸', x: 0.75, y: 0.25, color: '#7b3f6e', glow: '#f48fb1' },
+  { id: 'forest',  label: 'Forest',  emoji: '🌲', x: 0.44, y: 0.28, color: '#2d6a1f', glow: '#6dbf5a' },
+  { id: 'blossom', label: 'Garden',  emoji: '🌸', x: 0.62, y: 0.24, color: '#7b3f6e', glow: '#f48fb1' },
+  { id: 'ocean',   label: 'Ocean',   emoji: '🌊', x: 0.70, y: 0.50, color: '#1a5c7a', glow: '#4fc3f7' },
+  { id: 'desert',  label: 'Desert',  emoji: '🏜️', x: 0.30, y: 0.44, color: '#9a7010', glow: '#fdd835' },
+  { id: 'volcano', label: 'Volcano', emoji: '🌋', x: 0.36, y: 0.66, color: '#7a1a1a', glow: '#ff7043' },
+  { id: 'jungle',  label: 'Jungle',  emoji: '🌴', x: 0.56, y: 0.68, color: '#1a5c28', glow: '#aed581' },
 ];
 
 function MapView({ onSelect }) {
@@ -662,126 +662,172 @@ function MapView({ onSelect }) {
       return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
     }
 
+    // Stable random data (seeded, computed once)
+    const waveRng = rng(77);
+    const waves = Array.from({length: 18}, () => ({
+      wx: waveRng(), wy: waveRng(), ww: 40 + waveRng() * 120, phase: waveRng() * Math.PI * 2,
+    }));
+
     function drawMap(ts) {
       t.current = ts * 0.001;
       const W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Parchment background
-      const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W,H)*0.7);
-      bg.addColorStop(0, '#f5e6c8');
-      bg.addColorStop(0.6, '#e8d5a3');
-      bg.addColorStop(1, '#c9a96e');
+      // Ocean background
+      const bg = ctx.createLinearGradient(0, 0, W, H);
+      bg.addColorStop(0, '#0d3d5c');
+      bg.addColorStop(0.5, '#1a6080');
+      bg.addColorStop(1, '#0a2e45');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Aged paper texture — faint vein lines
-      const r = rng(42);
+      // Animated ocean wave ripples
       ctx.save();
       ctx.globalAlpha = 0.07;
-      ctx.strokeStyle = '#8b6914';
-      ctx.lineWidth = 0.8;
-      for (let i = 0; i < 30; i++) {
+      ctx.strokeStyle = '#7dd4f8';
+      ctx.lineWidth = 1;
+      for (const w of waves) {
         ctx.beginPath();
-        ctx.moveTo(r() * W, r() * H);
-        ctx.bezierCurveTo(r()*W, r()*H, r()*W, r()*H, r()*W, r()*H);
+        ctx.ellipse(w.wx * W + Math.sin(t.current * 0.4 + w.phase) * 6, w.wy * H, w.ww, w.ww * 0.18, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
       ctx.restore();
 
-      // Border frame
-      ctx.save();
-      ctx.strokeStyle = '#8b6914';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(10, 10, W - 20, H - 20);
-      ctx.lineWidth = 1;
-      ctx.strokeRect(16, 16, W - 32, H - 32);
-      ctx.restore();
-
       // Title
       ctx.save();
-      ctx.fillStyle = '#5c3d0e';
-      ctx.font = `bold ${Math.round(H * 0.045)}px Georgia, serif`;
+      ctx.fillStyle = '#a8d8f0';
+      ctx.font = `bold ${Math.round(H * 0.05)}px Georgia, serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText('TERRARIUM', W / 2, 26);
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 8;
+      ctx.fillText('TERRARIUM', W / 2, 20);
       ctx.font = `italic ${Math.round(H * 0.022)}px Georgia, serif`;
-      ctx.fillText('Choose your world', W / 2, 26 + Math.round(H * 0.05));
+      ctx.fillStyle = '#7ec8e8';
+      ctx.shadowBlur = 4;
+      ctx.fillText('Choose your world', W / 2, 20 + Math.round(H * 0.055));
+      ctx.restore();
+
+      // Draw landmass base (combined sandy shore behind all blobs)
+      const landCX = W * 0.50, landCY = H * 0.48;
+      const landR = Math.min(W, H) * 0.36;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 30;
+      const landBase = rng(999);
+      ctx.beginPath();
+      const lpts = 14;
+      for (let p = 0; p < lpts; p++) {
+        const angle = (p / lpts) * Math.PI * 2;
+        const jitter = 0.72 + landBase() * 0.36;
+        const bx = landCX + Math.cos(angle) * landR * jitter;
+        const by = landCY + Math.sin(angle) * landR * jitter;
+        p === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
+      }
+      ctx.closePath();
+      const shoreGrad = ctx.createRadialGradient(landCX, landCY, 0, landCX, landCY, landR);
+      shoreGrad.addColorStop(0, '#c8a96e');
+      shoreGrad.addColorStop(0.7, '#b89858');
+      shoreGrad.addColorStop(1, '#d4b882');
+      ctx.fillStyle = shoreGrad;
+      ctx.fill();
+      ctx.restore();
+
+      // Beach ring (lighter sandy edge)
+      ctx.save();
+      const beachBase = rng(888);
+      ctx.beginPath();
+      const bpts = 14;
+      for (let p = 0; p < bpts; p++) {
+        const angle = (p / bpts) * Math.PI * 2;
+        const jitter = 0.70 + beachBase() * 0.35;
+        const bx = landCX + Math.cos(angle) * (landR * jitter + 14);
+        const by = landCY + Math.sin(angle) * (landR * jitter + 14);
+        p === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = '#e8d4a0';
+      ctx.lineWidth = 10;
+      ctx.globalAlpha = 0.45;
+      ctx.stroke();
       ctx.restore();
 
       // Draw terrain blobs for each region
+      const rad = Math.min(W, H) * 0.155;
       MAP_REGIONS.forEach((reg, i) => {
         const cx = reg.x * W, cy = reg.y * H;
-        const rad = Math.min(W, H) * 0.11;
         const hovered = hover.current === i;
-        const pulse = hovered ? 1 + Math.sin(t.current * 4) * 0.06 : 1;
-        const r2 = rng(i * 99 + 7);
+        const pulse = hovered ? 1 + Math.sin(t.current * 4) * 0.05 : 1;
+        const r2 = rng(i * 137 + 13);
 
-        // Terrain blob
         ctx.save();
         if (hovered) {
           ctx.shadowColor = reg.glow;
-          ctx.shadowBlur = 24;
+          ctx.shadowBlur = 28;
         }
         ctx.beginPath();
-        const pts = 10;
+        const pts = 12;
         for (let p = 0; p < pts; p++) {
           const angle = (p / pts) * Math.PI * 2;
-          const jitter = 0.78 + r2() * 0.38;
+          const jitter = 0.76 + r2() * 0.36;
           const bx = cx + Math.cos(angle) * rad * jitter * pulse;
           const by = cy + Math.sin(angle) * rad * jitter * pulse;
           p === 0 ? ctx.moveTo(bx, by) : ctx.lineTo(bx, by);
         }
         ctx.closePath();
-        const grad = ctx.createRadialGradient(cx - rad*0.2, cy - rad*0.2, 0, cx, cy, rad * 1.2);
-        grad.addColorStop(0, reg.glow + 'cc');
-        grad.addColorStop(0.6, reg.color + 'aa');
-        grad.addColorStop(1, reg.color + '44');
+        const grad = ctx.createRadialGradient(cx - rad*0.25, cy - rad*0.25, 0, cx, cy, rad * 1.1);
+        grad.addColorStop(0, reg.glow + 'dd');
+        grad.addColorStop(0.55, reg.color + 'cc');
+        grad.addColorStop(1, reg.color + '77');
         ctx.fillStyle = grad;
         ctx.fill();
-        ctx.strokeStyle = hovered ? reg.glow : reg.color + '88';
-        ctx.lineWidth = hovered ? 2.5 : 1.5;
+        ctx.strokeStyle = hovered ? reg.glow : reg.glow + '55';
+        ctx.lineWidth = hovered ? 3 : 1.5;
         ctx.stroke();
         ctx.restore();
 
         // Emoji
-        const emojiSize = Math.round(Math.min(W,H) * (hovered ? 0.072 : 0.065));
+        const emojiSize = Math.round(Math.min(W,H) * (hovered ? 0.08 : 0.072));
         ctx.font = `${emojiSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(reg.emoji, cx, cy - emojiSize * 0.1);
+        ctx.fillText(reg.emoji, cx, cy - emojiSize * 0.15);
 
         // Label
         ctx.save();
-        ctx.fillStyle = hovered ? '#2c1a0e' : '#4a2e0a';
+        ctx.fillStyle = hovered ? '#ffffff' : '#e8f4ff';
         ctx.font = `${hovered ? 'bold ' : ''}${Math.round(Math.min(W,H) * 0.028)}px Georgia, serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillText(reg.label, cx, cy + emojiSize * 0.65);
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = hovered ? 6 : 4;
+        ctx.fillText(reg.label, cx, cy + emojiSize * 0.62);
         ctx.restore();
       });
 
-      // Decorative compass rose (bottom-right)
-      const cx2 = W - 52, cy2 = H - 52, cr = 28;
+      // Compass rose (bottom-right)
+      const crx = W - 56, cry = H - 56, crr = 26;
       ctx.save();
-      ctx.strokeStyle = '#8b6914';
-      ctx.fillStyle = '#8b6914';
-      ctx.lineWidth = 1;
-      ['N','E','S','W'].forEach((d,i) => {
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 6;
+      ['N','E','S','W'].forEach((d, i) => {
         const a = i * Math.PI / 2 - Math.PI / 2;
         ctx.beginPath();
-        ctx.moveTo(cx2 + Math.cos(a) * cr, cy2 + Math.sin(a) * cr);
-        ctx.lineTo(cx2 + Math.cos(a + Math.PI/4) * cr * 0.4, cy2 + Math.sin(a + Math.PI/4) * cr * 0.4);
-        ctx.lineTo(cx2, cy2);
+        ctx.moveTo(crx + Math.cos(a) * crr, cry + Math.sin(a) * crr);
+        ctx.lineTo(crx + Math.cos(a + Math.PI/4) * crr * 0.38, cry + Math.sin(a + Math.PI/4) * crr * 0.38);
+        ctx.lineTo(crx, cry);
         ctx.closePath();
-        ctx.fillStyle = i === 0 ? '#8b1a1a' : '#8b6914';
+        ctx.fillStyle = i === 0 ? '#e84040' : '#d4b882';
         ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 0.5;
         ctx.stroke();
-        ctx.font = `bold 10px Georgia`;
+        ctx.font = `bold 10px Georgia, serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#3d1f00';
-        ctx.fillText(d, cx2 + Math.cos(a) * (cr + 11), cy2 + Math.sin(a) * (cr + 11));
+        ctx.fillStyle = '#e8f4ff';
+        ctx.shadowBlur = 3;
+        ctx.fillText(d, crx + Math.cos(a) * (crr + 12), cry + Math.sin(a) * (crr + 12));
       });
       ctx.restore();
 
