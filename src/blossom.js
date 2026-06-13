@@ -32,12 +32,14 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
   let lastActivity = performance.now();
   let disturbance = 0;
   let frozenPeace = null; // non-null = scene is frozen at this value
+  let sessionActive = false; // peace only grows while stopwatch is running
 
   // ── peace / stillness ────────────────────────────────────────────────────
   const PEACE_RAMP = 90000; // 90 s to full peace
 
   function peaceLevel() {
     if (frozenPeace !== null) return frozenPeace;
+    if (!sessionActive) return 0;
     return clamp((performance.now() - lastActivity) / PEACE_RAMP, 0, 1);
   }
 
@@ -825,9 +827,11 @@ export function createBlossom(canvas, { onCanvasActivity } = {}) {
     setData,
     freezePeace() {
       frozenPeace = peaceLevel();
+      sessionActive = false;
     },
     unfreezePeace() {
       frozenPeace = null;
+      sessionActive = true;
       lastActivity = performance.now();
     },
     destroy() {
