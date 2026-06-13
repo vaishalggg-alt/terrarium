@@ -35,9 +35,9 @@ export function createSoundEngine() {
   function rain() {
     const c = ctx();
     const src = noise(c);
-    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.35;
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 5000;
-    const gain = c.createGain(); gain.gain.value = 0.20;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 0.6;
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass';  lp.frequency.value = 3500;
+    const gain = c.createGain(); gain.gain.value = 0.09;
     src.connect(bp); bp.connect(lp); lp.connect(gain); gain.connect(c.destination);
     src.start();
     active.push(src, bp, lp, gain);
