@@ -556,7 +556,7 @@ export function createJungle(canvas) {
     const t = bio >= 0.53 ? 1 : 0;
     if (t <= 0) return;
 
-    const bx = W * 0.28, by = groundY - 10;
+    const bx = W * 0.38, by = groundY - 10;
     const sc = Math.min(1, W / 420) * 1.3;
     const bob = Math.sin(time * 0.0012) * 1.5 * t;
     const pulse = 0.75 + Math.sin(time * 0.0018) * 0.25;
@@ -844,7 +844,7 @@ export function createJungle(canvas) {
     const t = bio >= 0.78 ? 1 : 0;
     if (t <= 0) return;
 
-    const cx = W * 0.68, cy = groundY - 10;
+    const cx = W * 0.22, cy = groundY - 10;
     const pulse = 0.70 + Math.sin(time * 0.0014) * 0.30;
 
     ctx.save();
