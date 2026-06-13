@@ -487,32 +487,116 @@
 <footer contenteditable="true">TERRARIUM · YOUR LIVING WORLD</footer>
 
 <script>
+  // ── PERSISTENCE ─────────────────────────────────────────────────────────
+  const STORE_KEY = 'terrarium-landing-v1';
+
+  function getEditables() {
+    return [...document.querySelectorAll('[contenteditable]')];
+  }
+
+  function assignIds() {
+    // Give every editable a stable data-eid based on position in DOM
+    getEditables().forEach((el, i) => { if (!el.dataset.eid) el.dataset.eid = 'e' + i; });
+  }
+
+  function saveAll() {
+    assignIds();
+    const data = {};
+    getEditables().forEach(el => { data[el.dataset.eid] = el.innerHTML; });
+
+    // Hero background image (base64 only, not video blob)
+    const heroBg = document.querySelector('#hero .hero-bg-img');
+    if (heroBg) data['__hero_bg__'] = heroBg.src;
+
+    // Biome images
+    document.querySelectorAll('.biome-visual').forEach((v, i) => {
+      const img = v.querySelector('.bv-img');
+      if (img) data['__biome_' + i + '__'] = img.src;
+    });
+
+    // Team photos
+    document.querySelectorAll('.dev-photo img').forEach((img, i) => {
+      data['__dev_photo_' + i + '__'] = img.src;
+    });
+
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch {}
+  }
+
+  function restoreAll() {
+    let data;
+    try { data = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch {}
+    if (!data) return;
+
+    assignIds();
+    getEditables().forEach(el => {
+      if (data[el.dataset.eid] !== undefined) el.innerHTML = data[el.dataset.eid];
+    });
+
+    // Hero background
+    if (data['__hero_bg__']) {
+      const hero = document.getElementById('hero');
+      let img = hero.querySelector('.hero-bg-img');
+      if (!img) { img = document.createElement('img'); img.className = 'hero-bg-img'; hero.insertBefore(img, hero.firstChild); }
+      img.src = data['__hero_bg__'];
+      hero.style.background = '#000';
+    }
+
+    // Biome images
+    document.querySelectorAll('.biome-visual').forEach((v, i) => {
+      const src = data['__biome_' + i + '__'];
+      if (!src) return;
+      let img = v.querySelector('.bv-img');
+      if (!img) { img = document.createElement('img'); img.className = 'bv-img'; v.insertBefore(img, v.firstChild); }
+      img.src = src;
+      const emoji = v.querySelector('.bv-emoji');
+      if (emoji) emoji.style.opacity = '0';
+    });
+
+    // Team photos
+    document.querySelectorAll('.dev-photo').forEach((card, i) => {
+      const src = data['__dev_photo_' + i + '__'];
+      if (!src) return;
+      const placeholder = card.querySelector('.dev-photo-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+      let img = card.querySelector('img');
+      if (!img) { img = document.createElement('img'); card.insertBefore(img, card.querySelector('input')); }
+      img.src = src;
+    });
+  }
+
+  // Auto-save on any content change
+  document.addEventListener('input', saveAll);
+  document.addEventListener('focusout', saveAll);
+
   // Hero background — image or video
   function loadHeroBg(input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
     const hero = document.getElementById('hero');
     const isVideo = file.type.startsWith('video/');
-    const url = URL.createObjectURL(file);
 
-    // Remove any existing bg media
     hero.querySelectorAll('.hero-bg-img, .hero-bg-video').forEach(el => el.remove());
 
     if (isVideo) {
+      const url = URL.createObjectURL(file);
       const vid = document.createElement('video');
       vid.className = 'hero-bg-video';
-      vid.autoplay = true;
-      vid.loop = true;
-      vid.muted = true;
-      vid.playsInline = true;
+      vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true;
       vid.src = url;
       hero.insertBefore(vid, hero.firstChild);
       vid.play();
+      // Videos can't be saved to localStorage (too large) — just show it for this session
     } else {
-      const img = document.createElement('img');
-      img.className = 'hero-bg-img';
-      img.src = url;
-      hero.insertBefore(img, hero.firstChild);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        let img = document.createElement('img');
+        img.className = 'hero-bg-img';
+        img.src = e.target.result;
+        hero.insertBefore(img, hero.firstChild);
+        hero.style.background = '#000';
+        saveAll();
+      };
+      reader.readAsDataURL(file);
     }
     hero.style.background = '#000';
   }
@@ -524,15 +608,11 @@
     reader.onload = (e) => {
       const visual = input.closest('.biome-visual');
       let img = visual.querySelector('.bv-img');
-      if (!img) {
-        img = document.createElement('img');
-        img.className = 'bv-img';
-        visual.insertBefore(img, visual.firstChild);
-      }
+      if (!img) { img = document.createElement('img'); img.className = 'bv-img'; visual.insertBefore(img, visual.firstChild); }
       img.src = e.target.result;
-      // Dim the emoji once image is set
       const emoji = visual.querySelector('.bv-emoji');
       if (emoji) emoji.style.opacity = '0';
+      saveAll();
     };
     reader.readAsDataURL(input.files[0]);
   }
@@ -547,11 +627,16 @@
       let img = card.querySelector('img');
       if (!img) { img = document.createElement('img'); card.insertBefore(img, input); }
       img.src = e.target.result;
+      saveAll();
     };
     reader.readAsDataURL(input.files[0]);
   }
 
   document.body.classList.add('js-ready');
+
+  // Restore saved content before setting up observers
+  restoreAll();
+
   const reveals = document.querySelectorAll('.reveal');
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -590,7 +675,7 @@
     del.className = 'textbox-delete';
     del.textContent = '×';
     del.title = 'Delete this block';
-    del.onclick = () => wrapper.remove();
+    del.onclick = () => { wrapper.remove(); saveAll(); };
     box.appendChild(del);
     wrapper.appendChild(box);
     zone.parentElement.insertBefore(wrapper, zone);
