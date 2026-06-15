@@ -1,4 +1,4 @@
-import { createElement as h, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createElement as h, useEffect, useRef, useState, useSyncExternalStore, Component } from 'react';
 import { createRoot } from 'react-dom/client';
 import htm from 'htm';
 import { EMOTIONS, EMOTION_KEYS } from './emotions.js';
@@ -757,4 +757,33 @@ function App() {
     </div>`;
 }
 
-createRoot(document.getElementById('root')).render(html`<${App} />`);
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { crashed: false, msg: '' }; }
+  static getDerivedStateFromError(e) { return { crashed: true, msg: e?.message || String(e) }; }
+  componentDidCatch(e) { console.error('Terrarium crash:', e); }
+  render() {
+    if (!this.state.crashed) return this.props.children;
+    return h('div', {
+      style: {
+        position:'fixed', inset:0, background:'#10131a', color:'#fff',
+        display:'flex', flexDirection:'column', alignItems:'center',
+        justifyContent:'center', gap:18, fontFamily:'Nunito,sans-serif',
+        padding:32, textAlign:'center',
+      }
+    },
+      h('div', { style:{fontSize:48} }, '🌿'),
+      h('h2', { style:{fontSize:22, fontFamily:'Fraunces,serif'} }, 'Something went wrong'),
+      h('p', { style:{fontSize:14, color:'rgba(255,255,255,.6)', maxWidth:280, lineHeight:1.5} },
+        'Your world is safe. Tap below to restart.'),
+      h('button', {
+        onClick: () => this.setState({ crashed: false }),
+        style: {
+          background:'#ffe98a', color:'#2b2d33', border:'none', borderRadius:999,
+          padding:'13px 28px', fontSize:15, fontWeight:700, cursor:'pointer',
+        }
+      }, 'Restart app'),
+    );
+  }
+}
+
+createRoot(document.getElementById('root')).render(h(ErrorBoundary, null, html`<${App} />`));
